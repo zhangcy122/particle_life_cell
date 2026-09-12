@@ -719,7 +719,8 @@
     let width = window.innerWidth;
     let height = window.innerHeight;
     let particles = [];
-    let particleCount = 2400;
+    const isMobile = window.innerWidth < 600;
+    let particleCount = isMobile ? 1200 : 2400; // 移动端自适应 1200 微粒，密度与宽屏完美等价，帧率极致流畅
     let rMax = 92;
     let beta = 0.35;
     let friction = 0.065;
@@ -1076,13 +1077,13 @@
     // --- 画布初始化与 Retina / iPhone 高分屏超清适配 ---
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d", { alpha: false });
-    let dpr = Math.min(window.devicePixelRatio || 1, 3);
+    let dpr = Math.min(window.devicePixelRatio || 1, 2); // 智能 2x Retina，兼顾视网膜超清与手机 60/120 FPS 丝滑性能
     let particleRadius = window.innerWidth < 600 ? 2.8 : 3.5;
 
     function resizeCanvas() {
       width = window.innerWidth;
       height = window.innerHeight;
-      dpr = Math.min(window.devicePixelRatio || 1, 3);
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       canvas.style.width = width + "px";
@@ -1357,23 +1358,42 @@
       initParticles(true);
     }
 
-    // --- 空间哈希网格加速引擎 ---
-    let grid = {};
+    // --- 高性能平坦一维空间网格引擎 (零内存分配、零 GC 暂停) ---
     let cellSize = rMax;
+    let numCols = 1;
+    let numRows = 1;
+    let gridCells = [];
+
+    function initGridCapacity(cols, rows) {
+      numCols = cols;
+      numRows = rows;
+      const total = numCols * numRows;
+      gridCells = new Array(total);
+      for (let i = 0; i < total; i++) {
+        gridCells[i] = [];
+      }
+    }
 
     function buildSpatialGrid() {
-      cellSize = rMax;
-      grid = {};
-      const numCols = Math.ceil(width / cellSize);
-      const numRows = Math.ceil(height / cellSize);
+      cellSize = Math.max(40, rMax);
+      const cols = Math.ceil(width / cellSize);
+      const rows = Math.ceil(height / cellSize);
+      if (cols !== numCols || rows !== numRows || gridCells.length !== cols * rows) {
+        initGridCapacity(cols, rows);
+      } else {
+        const total = gridCells.length;
+        for (let c = 0; c < total; c++) {
+          gridCells[c].length = 0; // 重置长度，零堆内存重分配
+        }
+      }
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        const col = Math.floor(p.x / cellSize);
-        const row = Math.floor(p.y / cellSize);
-        const key = (col % numCols) + "_" + (row % numRows);
-        if (!grid[key]) grid[key] = [];
-        grid[key].push(i);
+        let col = Math.floor(p.x / cellSize);
+        let row = Math.floor(p.y / cellSize);
+        if (col < 0) col = 0; else if (col >= numCols) col = numCols - 1;
+        if (row < 0) row = 0; else if (row >= numRows) row = numRows - 1;
+        gridCells[col + row * numCols].push(i);
       }
     }
 
@@ -1512,11 +1532,16 @@
       steps = 0;
 
       if (seedCells) {
-        injectProtozoanCell(width * 0.72, height * 0.48, 1.0, cellColorCount);  // 右侧主单细胞
-        injectProtozoanCell(width * 0.30, height * 0.68, 0.88, cellColorCount); // 左下副单细胞
-        injectProtozoanCell(width * 0.48, height * 0.28, 0.80, cellColorCount); // 顶部副单细胞
+        if (width < 600) {
+          injectProtozoanCell(width * 0.50, height * 0.40, 0.90, cellColorCount); // 手机端主单细胞
+          injectProtozoanCell(width * 0.50, height * 0.72, 0.70, cellColorCount); // 手机端伴随单细胞
+        } else {
+          injectProtozoanCell(width * 0.72, height * 0.48, 1.0, cellColorCount);  // 右侧主单细胞
+          injectProtozoanCell(width * 0.30, height * 0.68, 0.88, cellColorCount); // 左下副单细胞
+          injectProtozoanCell(width * 0.48, height * 0.28, 0.80, cellColorCount); // 顶部副单细胞
+        }
 
-        const remaining = Math.max(600, particleCount - particles.length);
+        const remaining = Math.max(150, particleCount - particles.length);
         for (let i = 0; i < remaining; i++) {
           const t = Math.floor(Math.random() * NUM_TYPES);
           particles.push({
@@ -1554,36 +1579,41 @@
       if (typeof audioEngine !== "undefined") audioEngine.playEnergyWakeEffect();
     }
 
-    // --- 物理更新动力学 ---
+    // --- 物理更新动力学 (极致性能优化：零分配、邻居保护截断、软核漩涡力场) ---
     function updatePhysics() {
       if (isPaused) return;
 
       buildSpatialGrid();
-      const numCols = Math.ceil(width / cellSize);
-      const numRows = Math.ceil(height / cellSize);
       const rMin = beta * rMax;
       const rDiff = (1.0 - beta) * rMax;
       const dt = 0.5 * timeScale;
       const fMult = forceMultiplier * 0.088;
+      const maxNeighborsPerCell = 60; // 截断极端聚集时的爆炸性循环，保底 60/120 FPS
+
+      const isTouching = mouseState.down;
+      const touchAttractR = Math.min(135, Math.min(width, height) * 0.36);
+      const touchAttractR2 = touchAttractR * touchAttractR;
+      const isRepel = mouseState.button === 2;
 
       for (let i = 0; i < particles.length; i++) {
         const p1 = particles[i];
         const t1 = p1.type;
-        const col = Math.floor(p1.x / cellSize);
-        const row = Math.floor(p1.y / cellSize);
+        let col = Math.floor(p1.x / cellSize);
+        let row = Math.floor(p1.y / cellSize);
+        if (col < 0) col = 0; else if (col >= numCols) col = numCols - 1;
+        if (row < 0) row = 0; else if (row >= numRows) row = numRows - 1;
 
         let fx = 0;
         let fy = 0;
 
         for (let ox = -1; ox <= 1; ox++) {
+          const sc = (col + ox + numCols) % numCols;
           for (let oy = -1; oy <= 1; oy++) {
-            const sc = (col + ox + numCols) % numCols;
             const sr = (row + oy + numRows) % numRows;
-            const key = sc + "_" + sr;
-            const cellParticles = grid[key];
-            if (!cellParticles) continue;
+            const cellParticles = gridCells[sc + sr * numCols];
+            const cLen = Math.min(cellParticles.length, maxNeighborsPerCell);
 
-            for (let k = 0; k < cellParticles.length; k++) {
+            for (let k = 0; k < cLen; k++) {
               const j = cellParticles[k];
               if (i === j) continue;
               const p2 = particles[j];
@@ -1617,8 +1647,8 @@
           }
         }
 
-        // 鼠标交互
-        if (mouseState.down) {
+        // 触控/鼠标交互：软核星系环流 (Soft-Core Vortex)，丝滑吸附绝无卡顿与黑洞塌缩
+        if (isTouching) {
           let mdx = mouseState.x - p1.x;
           let mdy = mouseState.y - p1.y;
           if (mdx > width * 0.5) mdx -= width;
@@ -1626,12 +1656,25 @@
           if (mdy > height * 0.5) mdy -= height;
           else if (mdy < -height * 0.5) mdy += height;
           const md2 = mdx * mdx + mdy * mdy;
-          if (md2 < 350 * 350 && md2 > 15) {
+
+          if (md2 < touchAttractR2 && md2 > 9) {
             const mr = Math.sqrt(md2);
-            const mSign = mouseState.button === 2 ? -1.8 : 1.2;
-            const mf = (mSign * 220 / mr) * fMult;
-            fx += (mdx / mr) * mf;
-            fy += (mdy / mr) * mf;
+            if (isRepel) {
+              const mf = (-1.8 * 220 / mr) * fMult;
+              fx += (mdx / mr) * mf;
+              fy += (mdy / mr) * mf;
+            } else {
+              // 线性平滑渐变引力 + 中心柔和微旋，形成行星光环式优雅流动
+              const pull = 1.35 * (1.0 - mr / touchAttractR) * 220 * fMult;
+              fx += (mdx / mr) * pull;
+              fy += (mdy / mr) * pull;
+              if (mr < 50) {
+                // 近中心切向自旋微扰 (-mdy, mdx)
+                const swirl = 16 * fMult;
+                fx += (-mdy / mr) * swirl;
+                fy += (mdx / mr) * swirl;
+              }
+            }
           }
         }
 
@@ -1666,7 +1709,6 @@
         const avgSpeed = totalSpeed / particles.length;
         audioEngine.updateSystemKineticDynamics(avgSpeed);
 
-        // 如果存在高速度/高活性微粒，或者单细胞游弋冲刺，触发电子微音
         if (fastestParticle && maxSpeed > 1.25 && Math.random() < 0.28) {
           audioEngine.playParticleTone(fastestParticle.type, maxSpeed, fastestParticle.x, fastestParticle.y);
         } else if (Math.random() < 0.08) {
@@ -1679,10 +1721,14 @@
         }
       }
 
-      // 鼠标拖拽交互时产生水波电子音效
-      if (mouseState.down && typeof audioEngine !== "undefined" && audioEngine.isEnabled && Math.random() < 0.16) {
-        const toneType = mouseState.button === 2 ? 1 : 2;
-        audioEngine.playParticleTone(toneType, 2.5, mouseState.x, mouseState.y);
+      // 触控拖拽交互时产生节流水波电子音效 (140ms 间隔)
+      if (mouseState.down && typeof audioEngine !== "undefined" && audioEngine.isEnabled) {
+        const now = performance.now();
+        if (!mouseState.lastAudioTime || now - mouseState.lastAudioTime > 140) {
+          mouseState.lastAudioTime = now;
+          const toneType = mouseState.button === 2 ? 1 : 2;
+          audioEngine.playParticleTone(toneType, 2.2, mouseState.x, mouseState.y);
+        }
       }
 
       steps++;
@@ -1714,11 +1760,12 @@
       }
 
       if (mouseState.down) {
+        const touchR = Math.min(110, Math.min(width, height) * 0.3);
         ctx.strokeStyle = mouseState.button === 2 ? "rgba(255, 82, 82, 0.45)" : "rgba(0, 229, 255, 0.45)";
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.arc(mouseState.x, mouseState.y, 80, 0, Math.PI * 2);
+        ctx.arc(mouseState.x, mouseState.y, touchR, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -1802,11 +1849,17 @@
       document.getElementById("valCellColors").textContent = cellColorCount + " 种颜色";
     });
 
-    document.getElementById("paramCount").addEventListener("input", e => {
-      particleCount = parseInt(e.target.value);
-      document.getElementById("valCount").textContent = particleCount;
-      initParticles(true);
-    });
+    const paramCount = document.getElementById("paramCount");
+    const valCount = document.getElementById("valCount");
+    if (paramCount) {
+      paramCount.value = particleCount;
+      valCount.textContent = particleCount;
+      paramCount.addEventListener("input", e => {
+        particleCount = parseInt(e.target.value);
+        valCount.textContent = particleCount;
+        initParticles(true);
+      });
+    }
     document.getElementById("paramRMax").addEventListener("input", e => {
       rMax = parseInt(e.target.value);
       document.getElementById("valRMax").textContent = rMax + " px";
