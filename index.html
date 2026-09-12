@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>群鸟算法与涌现：单细胞生命模拟器 (Particle Life)</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: #e0e0e0;
+    }
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #000000;
+      cursor: crosshair;
+    }
+
+    /* 沉浸式浮动控制面板 (玻璃拟态 Glassmorphism) */
+    .hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 340px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: rgba(12, 12, 18, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.75);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 10;
+    }
+    .hud.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-10px);
+    }
+    .hud::-webkit-scrollbar {
+      width: 4px;
+    }
+    .hud::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .title-row h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 10px;
+      background: linear-gradient(135deg, #7652e8, #00e5ff);
+      color: #000;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .desc {
+      font-size: 11px;
+      line-height: 1.5;
+      color: #9aa0a6;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #66c0f4;
+      margin: 14px 0 8px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 颜色物种管理区 */
+    .color-tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .color-tag {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 3px 8px 3px 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+    .color-tag:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      box-shadow: 0 0 6px currentColor;
+    }
+    .color-name {
+      color: #eee;
+      font-size: 11px;
+    }
+    .color-del-btn {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 13px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 2px;
+      transition: color 0.15s;
+    }
+    .color-del-btn:hover {
+      color: #ff5252;
+    }
+
+    .color-actions-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .btn-color-tool {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      color: #ddd;
+      padding: 6px 0;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .btn-color-tool:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      border-color: #00e5ff;
+    }
+    .btn-color-tool:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* 预设按钮网格 */
+    .presets-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .btn-preset {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      color: #ddd;
+      padding: 7px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-preset:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(0, 229, 255, 0.4);
+      color: #fff;
+    }
+    .btn-preset.active {
+      background: rgba(118, 82, 232, 0.25);
+      border-color: #7652e8;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(118, 82, 232, 0.3);
+    }
+
+    /* 滑块与控件 */
+    .control-group {
+      margin-bottom: 10px;
+    }
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #bbb;
+      margin-bottom: 4px;
+    }
+    .control-val {
+      color: #00e5ff;
+      font-family: monospace;
+      font-weight: bold;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #00e5ff;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0, 229, 255, 0.8);
+      transition: transform 0.1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* 相互作用力矩阵视觉编辑器 */
+    .matrix-container {
+      margin-top: 8px;
+      margin-bottom: 14px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow-x: auto;
+    }
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    .matrix-table th, .matrix-table td {
+      height: 24px;
+      text-align: center;
+      font-size: 9px;
+      font-family: monospace;
+      padding: 1px;
+    }
+    .matrix-table th {
+      color: #888;
+    }
+    .matrix-cell {
+      border-radius: 3px;
+      cursor: pointer;
+      transition: transform 0.15s, filter 0.15s;
+    }
+    .matrix-cell:hover {
+      transform: scale(1.18);
+      z-index: 2;
+      filter: brightness(1.3);
+    }
+
+    /* 底部操作工具栏 */
+    .actions-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .btn-action {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 6px;
+      color: #fff;
+      padding: 7px 0;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-action:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7652e8, #4a2cb5);
+      border-color: #8967ff;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #8765ff, #5837d1);
+      box-shadow: 0 0 12px rgba(118, 82, 232, 0.4);
+    }
+    .btn-wake {
+      background: linear-gradient(135deg, #00b4d8, #0077b6);
+      border-color: #0096c7;
+    }
+    .btn-wake:hover {
+      background: linear-gradient(135deg, #0077b6, #023e8a);
+      box-shadow: 0 0 12px rgba(0, 180, 216, 0.4);
+    }
+
+    /* 右上角悬浮纯享/全屏按钮 */
+    .top-right-tools {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+    }
+    .tool-pill {
+      background: rgba(12, 12, 18, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 11px;
+      color: #ccc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .tool-pill:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .tool-pill.audio-active {
+      border-color: #00e5ff;
+      background: rgba(0, 229, 255, 0.2);
+      color: #00e5ff;
+      box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
+    }
+
+    /* 底部实时统计 */
+    .stats-overlay {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.45);
+      font-family: monospace;
+      pointer-events: none;
+      line-height: 1.6;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      z-index: 5;
+    }
+    .stats-highlight {
+      color: #00e5ff;
+    }
+
+    /* 提示气泡 */
+    .tip-hud {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.35);
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <!-- 右上角快捷工具栏 -->
+  <div class="top-right-tools">
+    <div class="tool-pill" id="audioToggleBtn" title="快捷键: M 开启/关闭粒子电子声与背景音乐">
+      <span id="topAudioIcon">🔇</span> <span id="topAudioText">音乐声效: 关 (M)</span>
+    </div>
+    <div class="tool-pill" id="toggleHudBtn" title="快捷键: H 沉浸隐藏/唤醒控制面板">
+      <span>👁️</span> 影院模式 (H)
+    </div>
+    <div class="tool-pill" id="spawnCellBtn" title="在画面中心注入一个原版同心圆单细胞">
+      <span>🧬</span> 注入游动单细胞 (C)
+    </div>
+    <div class="tool-pill" id="fullscreenBtn" title="全屏沉浸演示">
+      <span>⛶</span> 全屏模式
+    </div>
+  </div>
+
+  <!-- 左侧控制面板 -->
+  <div class="hud" id="hud">
+    <div class="title-row">
+      <h1><span>🦠</span> 单细胞生命涌现模拟</h1>
+      <span class="badge">EMERGENCE</span>
+    </div>
+    <p class="desc">
+      视频《群鸟算法的魔术与涌现》末尾展示的活性物质粒子系统（Active Matter Particle Life）。生命持续游弋的核心在于<b>非对称相互作用力（打破牛顿第三定律）</b>与活性扰动，源源不断向系统注入动能，绝不陷入死锁定格。
+    </p>
+
+    <!-- 颜色物种动态增删控制 -->
+    <div class="section-title">
+      <span>🎨 颜色物种管理</span>
+      <span style="font-size: 10px; color: #888;" id="colorCountText">6 种颜色</span>
+    </div>
+    <div class="color-tags-container" id="colorTagsContainer"></div>
+    <div class="color-actions-row">
+      <button class="btn-color-tool" id="addColorBtn">
+        <span>➕</span> 添加颜色
+      </button>
+      <button class="btn-color-tool" id="delColorBtn">
+        <span>➖</span> 移除末尾
+      </button>
+    </div>
+
+    <div class="section-title">🌟 典型生命形态预设</div>
+    <div class="presets-grid">
+      <button class="btn-preset active" data-preset="protozoan">
+        <span>🔬</span> 视频原版游动单细胞
+      </button>
+      <button class="btn-preset" data-preset="flagellate">
+        <span>🦠</span> 游动变形鞭毛虫
+      </button>
+      <button class="btn-preset" data-preset="mitosis">
+        <span>🧬</span> 细胞分裂与繁殖
+      </button>
+      <button class="btn-preset" data-preset="primordial">
+        <span>🌌</span> 原生星云与网状
+      </button>
+      <button class="btn-preset" data-preset="colony">
+        <span>🧫</span> 多细胞共生菌群
+      </button>
+      <button class="btn-preset" data-preset="random">
+        <span>🎲</span> 随机演化探索
+      </button>
+    </div>
+
+    <div class="section-title">⚙️ 物理与动态环境参数</div>
+    <div class="control-group">
+      <div class="control-label">
+        <span>注入单细胞颜色数</span>
+        <span class="control-val" id="valCellColors">6 种颜色</span>
+      </div>
+      <input type="range" id="paramCellColors" min="2" max="6" step="1" value="6">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>粒子总数</span>
+        <span class="control-val" id="valCount">2400</span>
+      </div>
+      <input type="range" id="paramCount" min="600" max="4000" step="100" value="2400">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>最大交互半径 (r_max)</span>
+        <span class="control-val" id="valRMax">92 px</span>
+      </div>
+      <input type="range" id="paramRMax" min="40" max="150" step="2" value="92">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>流体粘滞阻力 (Friction)</span>
+        <span class="control-val" id="valFriction">0.065</span>
+      </div>
+      <input type="range" id="paramFriction" min="0.01" max="0.20" step="0.005" value="0.065">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>活性布朗微扰 (打破死态停滞)</span>
+        <span class="control-val" id="valJitter">0.12</span>
+      </div>
+      <input type="range" id="paramJitter" min="0.0" max="0.6" step="0.02" value="0.12">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>交互力全局强度</span>
+        <span class="control-val" id="valForce">1.0</span>
+      </div>
+      <input type="range" id="paramForce" min="0.2" max="2.5" step="0.1" value="1.0">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>演化时间流速</span>
+        <span class="control-val" id="valSpeed">1.0x</span>
+      </div>
+      <input type="range" id="paramSpeed" min="0.1" max="2.5" step="0.1" value="1.0">
+    </div>
+
+    <!-- 空间音乐与粒子声化控制 -->
+    <div class="section-title">
+      <span>🎵 空间音乐与粒子生乐</span>
+      <span style="font-size: 10px; color: #ff5252;" id="audioStatusBadge">● 已静音 (OFF)</span>
+    </div>
+    <div class="control-group">
+      <button class="btn-preset" id="hudAudioToggleBtn" style="width: 100%; justify-content: center; background: rgba(0, 229, 255, 0.1); border-color: rgba(0, 229, 255, 0.4);">
+        <span id="hudAudioIcon">🔈</span> <span id="hudAudioText">点击开启 粒子音乐与背景声 (M)</span>
+      </button>
+    </div>
+    <div class="control-group">
+      <div class="control-label">
+        <span>背景流动和弦音量 (Ambient Swells)</span>
+        <span class="control-val" id="valAmbientVol">40%</span>
+      </div>
+      <input type="range" id="paramAmbientVol" min="0" max="1" step="0.02" value="0.40">
+    </div>
+    <div class="control-group">
+      <div class="control-label">
+        <span>粒子运动电子音量 (Motion Synth)</span>
+        <span class="control-val" id="valParticleVol">55%</span>
+      </div>
+      <input type="range" id="paramParticleVol" min="0" max="1" step="0.02" value="0.55">
+    </div>
+    <div class="control-group">
+      <div class="control-label">
+        <span>音色清透度 (低音滤除 Cutoff)</span>
+        <span class="control-val" id="valBassCut">240 Hz</span>
+      </div>
+      <input type="range" id="paramBassCut" min="80" max="500" step="10" value="240">
+    </div>
+    <div class="control-group">
+      <div class="control-label">
+        <span>音阶调式 (Musical Scale)</span>
+      </div>
+      <div class="presets-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+        <button class="btn-preset active" data-scale="pentatonic">🌌 空灵五度</button>
+        <button class="btn-preset" data-scale="crystal">💎 水晶八音盒</button>
+        <button class="btn-preset" data-scale="celestial">✨ 星空利底亚</button>
+        <button class="btn-preset" data-scale="zen">🎋 禅意风铃</button>
+      </div>
+    </div>
+
+    <div class="section-title">📊 相互作用力矩阵 (实时可调引/斥)</div>
+    <div class="matrix-container">
+      <table class="matrix-table" id="matrixTable"></table>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn-action btn-primary" id="playPauseBtn">⏸️ 暂停</button>
+      <button class="btn-action btn-wake" id="wakeBtn" title="注入能量脉冲打破势阱停滞">⚡ 能量激活</button>
+      <button class="btn-action" id="resetBtn">🔄 重新初始化</button>
+    </div>
+  </div>
+
+  <!-- 底部左侧信息 -->
+  <div class="stats-overlay">
+    <div>FPS: <span class="stats-highlight" id="statFps">60</span> | 活跃微粒: <span class="stats-highlight" id="statParticles">2400</span> | 颜色数: <span class="stats-highlight" id="statColors">6</span></div>
+    <div>单细胞游动体: <span class="stats-highlight" id="statClusters">3</span> 处 | 演化步数: <span class="stats-highlight" id="statSteps">0</span></div>
+    <div>状态: <span class="stats-highlight" id="statMode">视频原版游动单细胞生物 (Active Swimming Protozoa)</span></div>
+  </div>
+
+  <!-- 底部右侧提示 -->
+  <div class="tip-hud">
+    鼠标左键拖拽吸引微粒 | 右键排斥微粒 | 双击注入单细胞 | 按空格暂停 | 按 M 键开启/关闭电子音乐 | 按 H 键影院模式
+  </div>
+
+  <script>
+    // --- 颜色备选大图库 (支持动态扩展至 12 种鲜明荧光粒子) ---
+    const FULL_PALETTE = [
+      { name: "紫核", hex: "#7652e8", r: 118, g: 82, b: 232 },
+      { name: "黄膜", hex: "#ffd426", r: 255, g: 212, b: 38 },
+      { name: "青毛", hex: "#00e5ff", r: 0, g: 229, b: 255 },
+      { name: "绿器", hex: "#00e676", r: 0, g: 230, b: 118 },
+      { name: "粉网", hex: "#e0407a", r: 224, g: 64, b: 122 },
+      { name: "红粒", hex: "#ff5252", r: 255, g: 82, b: 82 },
+      { name: "橙胞", hex: "#ff9100", r: 255, g: 145, b: 0 },
+      { name: "海蓝", hex: "#2979ff", r: 41, g: 121, b: 255 },
+      { name: "翠芽", hex: "#76ff03", r: 118, g: 255, b: 3 },
+      { name: "银白", hex: "#ffffff", r: 255, g: 255, b: 255 },
+      { name: "琥珀", hex: "#ffc400", r: 255, g: 196, b: 0 },
+      { name: "洋紫", hex: "#d500f9", r: 213, g: 0, b: 249 }
+    ];
+
+    // 当前启用的动态颜色列表
+    let COLORS = JSON.parse(JSON.stringify(FULL_PALETTE.slice(0, 6)));
+    let NUM_TYPES = COLORS.length;
+
+    // --- 物理模拟核心状态 ---
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let particles = [];
+    let particleCount = 2400;
+    let rMax = 92;
+    let beta = 0.35;
+    let friction = 0.065;
+    let jitter = 0.12; // 活性布朗扰动，防止死锁
+    let forceMultiplier = 1.0;
+    let timeScale = 1.0;
+    let isPaused = false;
+    let steps = 0;
+    let currentPresetName = "protozoan";
+    let cellColorCount = NUM_TYPES; // 注入单细胞时指定的颜色数 (默认使用全部当前颜色)
+
+    // 交互力矩阵 matrix[i][j] (动态尺寸 NUM_TYPES × NUM_TYPES)
+    let matrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+
+    // =========================================================================
+    // 空间生乐与动态粒子声化引擎 (Web Audio API: 纯净空灵、水晶质感、无浑浊低音)
+    // =========================================================================
+    class EmergenceAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.masterHighpass = null; // 主高通去浊滤波器
+        this.ambientGain = null;
+        this.particleGain = null;
+        this.delayNode = null;
+        this.delayFeedback = null;
+        this.delayFilter = null;
+        this.isEnabled = false;
+        this.ambientVol = 0.40;
+        this.particleVol = 0.55;
+        this.bassCutFreq = 240; // 默认 240Hz，彻底斩除低频轰鸣
+        this.currentScale = 'pentatonic';
+
+        // 晶莹高阶悦耳调式频率表 (Hz) - 聚焦于 C4~E6 优美空灵音区，绝无刺耳或沉重低频
+        this.scales = {
+          // 🌌 空灵五度 (C4~D6)
+          pentatonic: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66],
+          // 💎 水晶八音盒 (E4~E6)
+          crystal: [329.63, 392.00, 493.88, 587.33, 659.25, 783.99, 880.00, 987.77, 1174.66, 1318.51],
+          // ✨ 星空利底亚 (F4~C6)
+          celestial: [349.23, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 1046.50],
+          // 🎋 禅意风铃 (D4~C6)
+          zen: [293.66, 349.23, 392.00, 440.00, 523.25, 587.33, 698.46, 783.99, 880.00, 1046.50, 1174.66]
+        };
+
+        this.chordProgressionIndex = 0;
+        this.lastSoundTime = 0;
+        this.minInterval = 0.050; // 限制音符触发速率，如水滴般错落有致
+        this.ambientTimer = null;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+
+        // 1. 主总线
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
+
+        // 2. 主高通去浊滤波器：彻底斩断 240Hz 以下轰鸣声，只留下通透清澈的中高频
+        this.masterHighpass = this.ctx.createBiquadFilter();
+        this.masterHighpass.type = "highpass";
+        this.masterHighpass.frequency.setValueAtTime(this.bassCutFreq, this.ctx.currentTime);
+        this.masterHighpass.Q.setValueAtTime(0.707, this.ctx.currentTime);
+        this.masterHighpass.connect(this.masterGain);
+
+        // 3. 背景氛围声总线 (绝不使用持续长鸣的固定单音，采用浮动呼吸式和弦)
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.setValueAtTime(this.ambientVol, this.ctx.currentTime);
+        this.ambientGain.connect(this.masterHighpass);
+
+        // 4. 粒子运动电子声总线 + 动态压缩器
+        this.particleGain = this.ctx.createGain();
+        this.particleGain.gain.setValueAtTime(this.particleVol, this.ctx.currentTime);
+
+        this.compressor = this.ctx.createDynamicsCompressor();
+        this.compressor.threshold.setValueAtTime(-26, this.ctx.currentTime);
+        this.compressor.knee.setValueAtTime(30, this.ctx.currentTime);
+        this.compressor.ratio.setValueAtTime(4, this.ctx.currentTime);
+        this.compressor.attack.setValueAtTime(0.005, this.ctx.currentTime);
+        this.compressor.release.setValueAtTime(0.25, this.ctx.currentTime);
+
+        this.particleGain.connect(this.compressor);
+        this.compressor.connect(this.masterHighpass);
+
+        // 5. 空间混响回音延迟网络 (Ethereal Shimmer Delay) - 赋予微粒水滴风铃般回甘
+        this.delayNode = this.ctx.createDelay();
+        this.delayNode.delayTime.setValueAtTime(0.24, this.ctx.currentTime);
+        this.delayFeedback = this.ctx.createGain();
+        this.delayFeedback.gain.setValueAtTime(0.28, this.ctx.currentTime);
+        this.delayFilter = this.ctx.createBiquadFilter();
+        this.delayFilter.type = "bandpass";
+        this.delayFilter.frequency.setValueAtTime(1400, this.ctx.currentTime);
+        this.delayFilter.Q.setValueAtTime(1.0, this.ctx.currentTime);
+
+        this.delayNode.connect(this.delayFilter);
+        this.delayFilter.connect(this.delayFeedback);
+        this.delayFeedback.connect(this.delayNode);
+        this.delayFilter.connect(this.particleGain);
+
+        // 启动动态呼吸式浮动和弦 (绝无一直响着的固定长音！音高持续演进变化，呼吸渐入渐出)
+        this.startAmbientBreathingSwells();
+      }
+
+      // 动态呼吸式空灵和弦浪潮：音高实时轮转变化，伴随柔和呼吸渐入并彻底衰减至寂静，绝无死板单调的固定长音！
+      startAmbientBreathingSwells() {
+        const triggerNextSwell = () => {
+          if (!this.isEnabled || !this.ctx) {
+            this.ambientTimer = setTimeout(triggerNextSwell, 3000);
+            return;
+          }
+
+          const scale = this.scales[this.currentScale];
+          // 循环轮换不同的调式级数根音 (如 I - IV - VI - V - III - II)，音高永远在流动，绝无固定单音
+          const rootOffsets = [0, 3, 5, 2, 4, 1];
+          const rootIdx = rootOffsets[this.chordProgressionIndex % rootOffsets.length];
+          this.chordProgressionIndex++;
+
+          // 挑选当前和弦的 2 个优美空灵音符 (中高八度)
+          const f1 = scale[rootIdx % scale.length];
+          const f2 = scale[(rootIdx + 4) % scale.length];
+          const chordNotes = [f1, f2];
+
+          const t = this.ctx.currentTime;
+          // 呼吸波形：平滑升起 1.8s -> 悬浮 1.0s -> 彻底消散淡出 2.8s
+          const attack = 1.8;
+          const sustain = 1.0;
+          const release = 2.8;
+          const totalDuration = attack + sustain + release;
+
+          chordNotes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const filter = this.ctx.createBiquadFilter();
+            const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, t);
+
+            // 柔润带通塑形
+            filter.type = "bandpass";
+            filter.frequency.setValueAtTime(freq * 1.5, t);
+            filter.Q.setValueAtTime(1.2, t);
+
+            // 柔和包络：从0渐入，停留后完全衰减到0并彻底关闭
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.linearRampToValueAtTime(0.045 / (idx + 1), t + attack);
+            gain.gain.setValueAtTime(0.045 / (idx + 1), t + attack + sustain);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + totalDuration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+
+            if (panner) {
+              panner.pan.setValueAtTime(idx === 0 ? -0.35 : 0.35, t);
+              gain.connect(panner);
+              panner.connect(this.ambientGain);
+            } else {
+              gain.connect(this.ambientGain);
+            }
+
+            osc.start(t);
+            osc.stop(t + totalDuration + 0.1);
+          });
+
+          // 和弦完全淡出后，留出 2~4 秒的天然留白静谧时间，绝无持续不衰的固定声底！
+          const nextInterval = (totalDuration * 1000) + 1800 + Math.random() * 2500;
+          this.ambientTimer = setTimeout(triggerNextSwell, nextInterval);
+        };
+
+        this.ambientTimer = setTimeout(triggerNextSwell, 1200);
+      }
+
+      toggle() {
+        if (!this.ctx) {
+          this.init();
+        }
+        if (this.ctx.state === "suspended") {
+          this.ctx.resume();
+        }
+        this.isEnabled = !this.isEnabled;
+        const t = this.ctx.currentTime;
+        if (this.isEnabled) {
+          this.masterGain.gain.cancelScheduledValues(t);
+          this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, t);
+          this.masterGain.gain.exponentialRampToValueAtTime(1.0, t + 0.4);
+        } else {
+          this.masterGain.gain.cancelScheduledValues(t);
+          this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, t);
+          this.masterGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+        }
+        return this.isEnabled;
+      }
+
+      setAmbientVolume(vol) {
+        this.ambientVol = vol;
+        if (this.ambientGain && this.ctx) {
+          this.ambientGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.05);
+        }
+      }
+
+      setParticleVolume(vol) {
+        this.particleVol = vol;
+        if (this.particleGain && this.ctx) {
+          this.particleGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.05);
+        }
+      }
+
+      setBassCut(freq) {
+        this.bassCutFreq = freq;
+        if (this.masterHighpass && this.ctx) {
+          this.masterHighpass.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.05);
+        }
+      }
+
+      setScale(scaleKey) {
+        if (this.scales[scaleKey]) {
+          this.currentScale = scaleKey;
+        }
+      }
+
+      // 随微粒游弋/相互作用激发悦耳晶莹的水晶音符 (如雨滴敲击马林巴木琴)
+      playParticleTone(type, speed, x, y) {
+        if (!this.isEnabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        if (now - this.lastSoundTime < this.minInterval) return;
+        this.lastSoundTime = now;
+
+        const scale = this.scales[this.currentScale];
+        // 映射至清澈明亮的中高音区
+        const baseIndex = type % scale.length;
+        const speedBonus = Math.min(3, Math.floor(speed * 0.7));
+        const pitchIndex = (baseIndex + speedBonus) % scale.length;
+        const freq = scale[pitchIndex];
+
+        // 双振荡器复音合成 (纯正弦基音 + 晶体钟琴泛音)
+        const osc = this.ctx.createOscillator();
+        const oscHarmonic = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        // 空间双声道立体声像
+        let panner = null;
+        if (this.ctx.createStereoPanner) {
+          panner = this.ctx.createStereoPanner();
+          const panVal = Math.max(-0.85, Math.min(0.85, (x / width) * 2 - 1));
+          panner.pan.setValueAtTime(panVal, now);
+        }
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now);
+
+        // 2倍频微量谐波泛音，带来玲珑剔透的水晶音色
+        oscHarmonic.type = "sine";
+        oscHarmonic.frequency.setValueAtTime(freq * 2, now);
+        const harmGain = this.ctx.createGain();
+        harmGain.gain.setValueAtTime(0.16, now);
+        harmGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+        // 柔和带通滤波，消除沉重基底
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(freq * 1.4, now);
+        filter.Q.setValueAtTime(1.8, now);
+
+        // 晶莹快速弹拨包络 (无重低音轰鸣，柔和清脆)
+        const duration = 0.16 + Math.min(0.3, 0.4 / (speed + 0.8));
+        const noteGain = Math.min(0.16, 0.025 + speed * 0.02);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(noteGain, now + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        osc.connect(filter);
+        oscHarmonic.connect(harmGain);
+        harmGain.connect(filter);
+        filter.connect(gain);
+
+        if (panner) {
+          gain.connect(panner);
+          panner.connect(this.particleGain);
+          if (this.delayNode) panner.connect(this.delayNode);
+        } else {
+          gain.connect(this.particleGain);
+          if (this.delayNode) gain.connect(this.delayNode);
+        }
+
+        osc.start(now);
+        oscHarmonic.start(now);
+        osc.stop(now + duration + 0.05);
+        oscHarmonic.stop(now + duration + 0.05);
+      }
+
+      // 宏观系统动能响应 (仅在粒子活跃流动时增加微粒空间回音，绝无固定长音)
+      updateSystemKineticDynamics(avgSpeed) {
+        if (!this.isEnabled || !this.ctx || !this.delayFeedback) return;
+        const targetFeedback = Math.min(0.38, 0.18 + avgSpeed * 0.08);
+        this.delayFeedback.gain.setTargetAtTime(targetFeedback, this.ctx.currentTime, 0.3);
+      }
+
+      // 注入细胞时的水晶琶音天籁音效 (C5 ~ G6 晶亮琶音)
+      playCellSpawnEffect() {
+        if (!this.isEnabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const cascadeFreqs = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+
+        for (let i = 0; i < cascadeFreqs.length; i++) {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sine";
+          const t = now + i * 0.045;
+          osc.frequency.setValueAtTime(cascadeFreqs[i], t);
+
+          gain.gain.setValueAtTime(0.0001, t);
+          gain.gain.linearRampToValueAtTime(0.09, t + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+
+          osc.connect(gain);
+          gain.connect(this.particleGain);
+          if (this.delayNode) gain.connect(this.delayNode);
+          osc.start(t);
+          osc.stop(t + 0.55);
+        }
+      }
+
+      // 能量激活唤醒空灵磬音 (330Hz / 660Hz 纯净颂钵余韵，无 40Hz 低频震颤)
+      playEnergyWakeEffect() {
+        if (!this.isEnabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const freqs = [329.63, 659.25, 987.77];
+
+        freqs.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(f, now);
+
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.linearRampToValueAtTime(0.12 / (idx + 1), now + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+          osc.connect(gain);
+          gain.connect(this.particleGain);
+          if (this.delayNode) gain.connect(this.delayNode);
+          osc.start(now);
+          osc.stop(now + 1.3);
+        });
+      }
+    }
+
+    const audioEngine = new EmergenceAudioEngine();
+
+    // --- 画布初始化 ---
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+
+    function resizeCanvas() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    // --- 预设形态库 ---
+    const PRESETS = {
+      // 1. 视频原版游动单细胞生物
+      protozoan: {
+        name: "视频原版游动单细胞生物",
+        rMax: 92,
+        beta: 0.35,
+        friction: 0.065,
+        jitter: 0.12,
+        matrix: [
+          // 0(紫核)  1(黄膜)  2(青毛)  3(绿尾)  4(粉网)  5(红粒)
+          [  0.80,   0.70,  -0.50,   0.00,   0.00,  -0.10 ], // 0(紫) 致密圆核
+          [  0.70,   0.08,   0.65,   0.25,   0.00,   0.00 ], // 1(黄) 内膜环
+          [ -0.50,   0.65,   0.08,  -0.35,   0.00,   0.00 ], // 2(青) 纤毛前导
+          [  0.00,   0.35,   0.75,   0.65,  -0.10,   0.00 ], // 3(绿) 推进马达 (+0.75追赶青，驱动持续游动)
+          [  0.00,   0.00,   0.00,  -0.10,   0.22,   0.15 ], // 4(粉) 胞外流动微丝网状
+          [ -0.10,   0.00,   0.00,   0.00,   0.15,   0.20 ]  // 5(红) 弥散养分微粒
+        ]
+      },
+      // 2. 游动变形鞭毛虫
+      flagellate: {
+        name: "游动变形鞭毛虫",
+        rMax: 100,
+        beta: 0.32,
+        friction: 0.060,
+        jitter: 0.14,
+        matrix: [
+          [ 0.70,   0.50,  -0.60,   0.30,   0.00,   0.00 ],
+          [-0.40,   0.60,   0.80,  -0.20,   0.00,   0.00 ],
+          [ 0.50,  -0.70,   0.40,   0.80,   0.00,   0.00 ],
+          [-0.60,   0.30,  -0.50,   0.70,   0.10,   0.00 ],
+          [ 0.00,   0.00,   0.00,   0.00,   0.25,  -0.10 ],
+          [ 0.00,   0.00,   0.00,   0.00,  -0.10,   0.20 ]
+        ]
+      },
+      // 3. 细胞分裂与繁殖
+      mitosis: {
+        name: "细胞分裂与繁殖",
+        rMax: 88,
+        beta: 0.35,
+        friction: 0.075,
+        jitter: 0.15,
+        matrix: [
+          [ 0.55,  -0.25,  -0.40,   0.40,   0.00,   0.00 ],
+          [ 0.80,  -0.15,  -0.30,   0.00,   0.10,   0.00 ],
+          [-0.30,   0.85,  -0.12,   0.20,   0.00,   0.00 ],
+          [ 0.50,   0.20,   0.20,  -0.30,   0.00,   0.00 ],
+          [ 0.00,   0.00,   0.00,   0.00,   0.25,   0.15 ],
+          [ 0.00,   0.00,   0.00,   0.00,   0.15,   0.25 ]
+        ]
+      },
+      // 4. 原初宇宙与星系网状
+      primordial: {
+        name: "原初宇宙与星系网状",
+        rMax: 110,
+        beta: 0.28,
+        friction: 0.055,
+        jitter: 0.10,
+        matrix: [
+          [ 0.40,   0.30,  -0.20,   0.00,   0.20,   0.00 ],
+          [ 0.30,   0.40,   0.10,  -0.10,   0.00,   0.20 ],
+          [-0.20,   0.10,   0.50,   0.20,  -0.10,   0.00 ],
+          [ 0.00,  -0.10,   0.20,   0.40,   0.30,  -0.20 ],
+          [ 0.20,   0.00,  -0.10,   0.30,   0.35,   0.10 ],
+          [ 0.00,   0.20,   0.00,  -0.20,   0.10,   0.35 ]
+        ]
+      },
+      // 5. 多细胞共生菌群
+      colony: {
+        name: "多细胞共生菌群",
+        rMax: 85,
+        beta: 0.36,
+        friction: 0.070,
+        jitter: 0.12,
+        matrix: [
+          [ 0.75,  -0.40,   0.10,  -0.20,   0.00,   0.00 ],
+          [ 0.85,  -0.20,  -0.35,   0.10,   0.00,   0.00 ],
+          [ 0.10,   0.80,  -0.15,  -0.10,   0.00,   0.00 ],
+          [-0.20,   0.10,  -0.10,   0.80,  -0.30,   0.10 ],
+          [ 0.00,   0.00,   0.00,  -0.30,   0.35,  -0.10 ],
+          [ 0.00,   0.00,   0.00,   0.10,  -0.10,   0.35 ]
+        ]
+      },
+      // 6. 随机演化探索
+      random: {
+        name: "随机演化探索",
+        rMax: 92,
+        beta: 0.33,
+        friction: 0.065,
+        jitter: 0.12,
+        matrix: null
+      }
+    };
+
+    // --- 动态添加与减少颜色 ---
+    function addColor() {
+      if (COLORS.length >= FULL_PALETTE.length) {
+        alert("已达到最大支持颜色数量上限 (" + FULL_PALETTE.length + " 种)！");
+        return;
+      }
+      const nextColor = JSON.parse(JSON.stringify(FULL_PALETTE[COLORS.length]));
+      COLORS.push(nextColor);
+      const oldLen = NUM_TYPES;
+      NUM_TYPES = COLORS.length;
+
+      // 扩展矩阵维度: (oldLen) -> (oldLen + 1)
+      const newMatrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+      for (let i = 0; i < oldLen; i++) {
+        for (let j = 0; j < oldLen; j++) {
+          newMatrix[i][j] = matrix[i][j];
+        }
+      }
+      // 初始化新颜色与其它颜色的相互作用力
+      const newIdx = oldLen;
+      newMatrix[newIdx][newIdx] = parseFloat((0.4 + Math.random() * 0.4).toFixed(2));
+      for (let i = 0; i < oldLen; i++) {
+        const f1 = parseFloat(((Math.random() * 2 - 1) * 0.7).toFixed(2));
+        const f2 = parseFloat(((Math.random() * 2 - 1) * 0.7).toFixed(2));
+        newMatrix[i][newIdx] = f1;
+        newMatrix[newIdx][i] = f2;
+      }
+      matrix = newMatrix;
+
+      // 如果之前注入颜色数为全选，则同步增加
+      if (cellColorCount === oldLen) {
+        cellColorCount = NUM_TYPES;
+      }
+
+      // 添加新颜色的粒子到场景中
+      const newCount = Math.round(particleCount / NUM_TYPES);
+      for (let i = 0; i < newCount; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 1.0,
+          vy: (Math.random() - 0.5) * 1.0,
+          type: newIdx
+        });
+      }
+
+      updateColorUI();
+      renderMatrixTable();
+      document.getElementById("statParticles").textContent = particles.length;
+      document.getElementById("statColors").textContent = NUM_TYPES;
+    }
+
+    function removeColor(targetIdx = null) {
+      if (COLORS.length <= 2) {
+        alert("至少需要保留 2 种颜色以维持粒子相互作用！");
+        return;
+      }
+
+      const delIdx = targetIdx !== null ? targetIdx : COLORS.length - 1;
+      COLORS.splice(delIdx, 1);
+      const oldLen = NUM_TYPES;
+      NUM_TYPES = COLORS.length;
+
+      // 缩减矩阵
+      const newMatrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+      let ni = 0;
+      for (let i = 0; i < oldLen; i++) {
+        if (i === delIdx) continue;
+        let nj = 0;
+        for (let j = 0; j < oldLen; j++) {
+          if (j === delIdx) continue;
+          newMatrix[ni][nj] = matrix[i][j];
+          nj++;
+        }
+        ni++;
+      }
+      matrix = newMatrix;
+
+      if (cellColorCount > NUM_TYPES) {
+        cellColorCount = NUM_TYPES;
+      }
+
+      // 移除粒子并重新映射剩余粒子的类型索引
+      particles = particles.filter(p => p.type !== delIdx);
+      particles.forEach(p => {
+        if (p.type > delIdx) p.type--;
+      });
+
+      updateColorUI();
+      renderMatrixTable();
+      document.getElementById("statParticles").textContent = particles.length;
+      document.getElementById("statColors").textContent = NUM_TYPES;
+    }
+
+    // 渲染颜色胶囊标签与更新滑块
+    function updateColorUI() {
+      const container = document.getElementById("colorTagsContainer");
+      document.getElementById("colorCountText").textContent = NUM_TYPES + " 种颜色";
+      let html = "";
+      COLORS.forEach((c, idx) => {
+        html += `
+          <div class="color-tag" style="border-color: ${c.hex}44">
+            <span class="color-dot" style="background-color: ${c.hex}; color: ${c.hex}"></span>
+            <span class="color-name">${c.name}</span>
+            <button class="color-del-btn" onclick="removeColor(${idx})" title="删除该颜色 (✕)">✕</button>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+
+      // 检查按钮禁用状态
+      document.getElementById("addColorBtn").disabled = COLORS.length >= FULL_PALETTE.length;
+      document.getElementById("delColorBtn").disabled = COLORS.length <= 2;
+
+      // 同步更新注入细胞颜色数滑块
+      const cellSlider = document.getElementById("paramCellColors");
+      if (cellSlider) {
+        cellSlider.max = NUM_TYPES;
+        if (cellColorCount > NUM_TYPES) cellColorCount = NUM_TYPES;
+        cellSlider.value = cellColorCount;
+        document.getElementById("valCellColors").textContent = cellColorCount + " 种颜色";
+      }
+    }
+
+    // 切换预设模式 (严格保持用户当前的颜色数量，不重置颜色数)
+    function applyPreset(key) {
+      currentPresetName = key;
+      const p = PRESETS[key];
+      rMax = p.rMax;
+      beta = p.beta || 0.35;
+      friction = p.friction;
+      jitter = p.jitter !== undefined ? p.jitter : 0.12;
+
+      document.getElementById("paramRMax").value = rMax;
+      document.getElementById("valRMax").textContent = rMax + " px";
+      document.getElementById("paramFriction").value = friction;
+      document.getElementById("valFriction").textContent = friction.toFixed(3);
+      document.getElementById("paramJitter").value = jitter;
+      document.getElementById("valJitter").textContent = jitter.toFixed(2);
+      document.getElementById("statMode").textContent = p.name;
+
+      // 核心要求：切换模式时绝不改变 COLORS 和 NUM_TYPES 的数量！
+      const oldMatrix = matrix;
+      const newMatrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+
+      if (key === "random") {
+        for (let i = 0; i < NUM_TYPES; i++) {
+          for (let j = 0; j < NUM_TYPES; j++) {
+            newMatrix[i][j] = parseFloat(((Math.random() * 2 - 1) * 0.85).toFixed(2));
+          }
+        }
+      } else {
+        for (let i = 0; i < NUM_TYPES; i++) {
+          for (let j = 0; j < NUM_TYPES; j++) {
+            if (i < 6 && j < 6 && p.matrix && p.matrix[i] && p.matrix[i][j] !== undefined) {
+              newMatrix[i][j] = p.matrix[i][j];
+            } else if (oldMatrix && oldMatrix[i] && oldMatrix[i][j] !== undefined) {
+              newMatrix[i][j] = oldMatrix[i][j];
+            } else {
+              // 超出 6 色范围时自动智能设定和谐交互力
+              newMatrix[i][j] = i === j ? 0.45 : parseFloat(((Math.random() * 2 - 1) * 0.5).toFixed(2));
+            }
+          }
+        }
+      }
+      matrix = newMatrix;
+
+      renderMatrixTable();
+      initParticles(true);
+    }
+
+    // --- 空间哈希网格加速引擎 ---
+    let grid = {};
+    let cellSize = rMax;
+
+    function buildSpatialGrid() {
+      cellSize = rMax;
+      grid = {};
+      const numCols = Math.ceil(width / cellSize);
+      const numRows = Math.ceil(height / cellSize);
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const col = Math.floor(p.x / cellSize);
+        const row = Math.floor(p.y / cellSize);
+        const key = (col % numCols) + "_" + (row % numRows);
+        if (!grid[key]) grid[key] = [];
+        grid[key].push(i);
+      }
+    }
+
+    // 注入活体单细胞 (严格支持注入指定的颜色种类数)
+    function injectProtozoanCell(cx, cy, scale = 1.0, colorCount = cellColorCount) {
+      const k = Math.max(1, Math.min(colorCount, NUM_TYPES));
+      if (k === 1) {
+        for (let i = 0; i < 180; i++) {
+          const r = Math.random() * 45 * scale;
+          const ang = Math.random() * Math.PI * 2;
+          particles.push({
+            x: (cx + Math.cos(ang) * r + width) % width,
+            y: (cy + Math.sin(ang) * r + height) % height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            type: 0
+          });
+        }
+      } else if (k === 2) {
+        // 内核 (type 0)
+        for (let i = 0; i < 90; i++) {
+          const r = Math.random() * 26 * scale;
+          const ang = Math.random() * Math.PI * 2;
+          particles.push({
+            x: (cx + Math.cos(ang) * r + width) % width,
+            y: (cy + Math.sin(ang) * r + height) % height,
+            vx: 0, vy: 0, type: 0
+          });
+        }
+        // 外膜与推进环 (type 1)
+        for (let i = 0; i < 160; i++) {
+          const r = (58 + (Math.random() - 0.5) * 6) * scale;
+          const ang = (i / 160) * Math.PI * 2;
+          const isPropulsion = ang > 0.8 && ang < 1.6;
+          particles.push({
+            x: (cx + Math.cos(ang) * r + width) % width,
+            y: (cy + Math.sin(ang) * r + height) % height,
+            vx: isPropulsion ? 0.4 + Math.random() * 0.2 : 0,
+            vy: isPropulsion ? -0.4 - Math.random() * 0.2 : 0,
+            type: 1
+          });
+        }
+      } else if (k === 3) {
+        // 内核 (type 0)
+        for (let i = 0; i < 75; i++) {
+          const r = Math.random() * 22 * scale;
+          const ang = Math.random() * Math.PI * 2;
+          particles.push({
+            x: (cx + Math.cos(ang) * r + width) % width,
+            y: (cy + Math.sin(ang) * r + height) % height,
+            vx: 0, vy: 0, type: 0
+          });
+        }
+        // 中层膜 (type 1)
+        for (let i = 0; i < 120; i++) {
+          const r = (48 + (Math.random() - 0.5) * 5) * scale;
+          const ang = (i / 120) * Math.PI * 2;
+          particles.push({
+            x: (cx + Math.cos(ang) * r + width) % width,
+            y: (cy + Math.sin(ang) * r + height) % height,
+            vx: 0, vy: 0, type: 1
+          });
+        }
+        // 外层纤毛与尾部推进 (type 2)
+        for (let i = 0; i < 150; i++) {
+          const r = (72 + (Math.random() - 0.5) * 6) * scale;
+          const ang = (i / 150) * Math.PI * 2;
+          const isPropulsion = ang > 0.8 && ang < 1.6;
+          particles.push({
+            x: (cx + Math.cos(ang) * r + width) % width,
+            y: (cy + Math.sin(ang) * r + height) % height,
+            vx: isPropulsion ? 0.4 + Math.random() * 0.2 : 0,
+            vy: isPropulsion ? -0.4 - Math.random() * 0.2 : 0,
+            type: 2
+          });
+        }
+      } else {
+        // k >= 4: 完整的多层生化细胞器结构，严格包含从 0 到 k-1 每一个指定颜色！
+        // 1. 中心核心 (type 0)
+        const coreCount = Math.floor(75 * scale);
+        for (let i = 0; i < coreCount; i++) {
+          const r = Math.random() * 20 * scale;
+          const ang = Math.random() * Math.PI * 2;
+          particles.push({
+            x: (cx + Math.cos(ang) * r + width) % width,
+            y: (cy + Math.sin(ang) * r + height) % height,
+            vx: 0, vy: 0, type: 0
+          });
+        }
+
+        // 2. 中间多层细胞同心环膜与生化质体 (type 1 到 type k-2)
+        const numInnerLayers = k - 2;
+        const baseRadius = 38 * scale;
+        const maxRadius = 72 * scale;
+        const radiusStep = (maxRadius - baseRadius) / Math.max(1, numInnerLayers);
+
+        for (let l = 0; l < numInnerLayers; l++) {
+          const typeIdx = l + 1; // 1, 2, ... k-2
+          const ringRadius = baseRadius + l * radiusStep;
+          const ringCount = Math.floor((90 + l * 20) * scale);
+          for (let i = 0; i < ringCount; i++) {
+            const r = ringRadius + (Math.random() - 0.5) * (4 * scale);
+            const ang = (i / ringCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.05;
+            particles.push({
+              x: (cx + Math.cos(ang) * r + width) % width,
+              y: (cy + Math.sin(ang) * r + height) % height,
+              vx: 0, vy: 0, type: typeIdx
+            });
+          }
+        }
+
+        // 3. 最外层推进器官/鞭毛/纤毛层 (type k-1)
+        const motorType = k - 1;
+        const motorRingRadius = (maxRadius + 6 * scale);
+        const motorCount = Math.floor(65 * scale);
+        for (let i = 0; i < motorCount; i++) {
+          const r = motorRingRadius + Math.random() * (16 * scale);
+          // 集中在后侧推进扇区 (0.7 ~ 1.5 rad)
+          const ang = 1.1 + (Math.random() - 0.5) * 0.9;
+          particles.push({
+            x: (cx + Math.cos(ang) * r + width) % width,
+            y: (cy + Math.sin(ang) * r + height) % height,
+            vx: 0.45 + Math.random() * 0.25,
+            vy: -0.45 - Math.random() * 0.25,
+            type: motorType
+          });
+        }
+      }
+      if (typeof audioEngine !== "undefined") audioEngine.playCellSpawnEffect();
+      document.getElementById("statParticles").textContent = particles.length;
+    }
+
+    // 初始化微粒
+    function initParticles(seedCells = true) {
+      particles = [];
+      steps = 0;
+
+      if (seedCells) {
+        injectProtozoanCell(width * 0.72, height * 0.48, 1.0, cellColorCount);  // 右侧主单细胞
+        injectProtozoanCell(width * 0.30, height * 0.68, 0.88, cellColorCount); // 左下副单细胞
+        injectProtozoanCell(width * 0.48, height * 0.28, 0.80, cellColorCount); // 顶部副单细胞
+
+        const remaining = Math.max(600, particleCount - particles.length);
+        for (let i = 0; i < remaining; i++) {
+          const t = Math.floor(Math.random() * NUM_TYPES);
+          particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.8,
+            vy: (Math.random() - 0.5) * 0.8,
+            type: t
+          });
+        }
+      } else {
+        // 均匀散布所有启用颜色微粒
+        for (let i = 0; i < particleCount; i++) {
+          const t = i % NUM_TYPES;
+          particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 1.0,
+            vy: (Math.random() - 0.5) * 1.0,
+            type: t
+          });
+        }
+      }
+      document.getElementById("statParticles").textContent = particles.length;
+      document.getElementById("statColors").textContent = NUM_TYPES;
+    }
+
+    // --- 能量激活脉冲 (打破死态停滞) ---
+    function wakeUpEnergyPulse() {
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.vx += (Math.random() - 0.5) * 3.5;
+        p.vy += (Math.random() - 0.5) * 3.5;
+      }
+      if (typeof audioEngine !== "undefined") audioEngine.playEnergyWakeEffect();
+    }
+
+    // --- 物理更新动力学 ---
+    function updatePhysics() {
+      if (isPaused) return;
+
+      buildSpatialGrid();
+      const numCols = Math.ceil(width / cellSize);
+      const numRows = Math.ceil(height / cellSize);
+      const rMin = beta * rMax;
+      const rDiff = (1.0 - beta) * rMax;
+      const dt = 0.5 * timeScale;
+      const fMult = forceMultiplier * 0.088;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+        const t1 = p1.type;
+        const col = Math.floor(p1.x / cellSize);
+        const row = Math.floor(p1.y / cellSize);
+
+        let fx = 0;
+        let fy = 0;
+
+        for (let ox = -1; ox <= 1; ox++) {
+          for (let oy = -1; oy <= 1; oy++) {
+            const sc = (col + ox + numCols) % numCols;
+            const sr = (row + oy + numRows) % numRows;
+            const key = sc + "_" + sr;
+            const cellParticles = grid[key];
+            if (!cellParticles) continue;
+
+            for (let k = 0; k < cellParticles.length; k++) {
+              const j = cellParticles[k];
+              if (i === j) continue;
+              const p2 = particles[j];
+              const t2 = p2.type;
+
+              let dx = p2.x - p1.x;
+              let dy = p2.y - p1.y;
+
+              if (dx > width * 0.5) dx -= width;
+              else if (dx < -width * 0.5) dx += width;
+              if (dy > height * 0.5) dy -= height;
+              else if (dy < -height * 0.5) dy += height;
+
+              const distSq = dx * dx + dy * dy;
+              if (distSq > 0.0001 && distSq < rMax * rMax) {
+                const r = Math.sqrt(distSq);
+                let force = 0;
+
+                if (r < rMin) {
+                  force = (r / rMin - 1.0);
+                } else {
+                  const fVal = matrix[t1] ? matrix[t1][t2] : 0.0;
+                  force = fVal * (1.0 - Math.abs(2.0 * r - (1.0 + beta) * rMax) / rDiff);
+                }
+
+                const fScale = (force / r) * fMult;
+                fx += dx * fScale;
+                fy += dy * fScale;
+              }
+            }
+          }
+        }
+
+        // 鼠标交互
+        if (mouseState.down) {
+          let mdx = mouseState.x - p1.x;
+          let mdy = mouseState.y - p1.y;
+          if (mdx > width * 0.5) mdx -= width;
+          else if (mdx < -width * 0.5) mdx += width;
+          if (mdy > height * 0.5) mdy -= height;
+          else if (mdy < -height * 0.5) mdy += height;
+          const md2 = mdx * mdx + mdy * mdy;
+          if (md2 < 350 * 350 && md2 > 15) {
+            const mr = Math.sqrt(md2);
+            const mSign = mouseState.button === 2 ? -1.8 : 1.2;
+            const mf = (mSign * 220 / mr) * fMult;
+            fx += (mdx / mr) * mf;
+            fy += (mdy / mr) * mf;
+          }
+        }
+
+        // 活性微扰，抵消摩擦死锁
+        if (jitter > 0) {
+          fx += (Math.random() - 0.5) * jitter * 2.0;
+          fy += (Math.random() - 0.5) * jitter * 2.0;
+        }
+
+        p1.vx = (p1.vx + fx * dt) * (1.0 - friction);
+        p1.vy = (p1.vy + fy * dt) * (1.0 - friction);
+      }
+
+      let totalSpeed = 0;
+      let fastestParticle = null;
+      let maxSpeed = 0;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x = (p.x + p.vx * dt + width) % width;
+        p.y = (p.y + p.vy * dt + height) % height;
+        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        totalSpeed += spd;
+        if (spd > maxSpeed) {
+          maxSpeed = spd;
+          fastestParticle = p;
+        }
+      }
+
+      // 实时音频动态声化处理 (随粒子速度、相互作用与游弋发声)
+      if (typeof audioEngine !== "undefined" && audioEngine.isEnabled && particles.length > 0) {
+        const avgSpeed = totalSpeed / particles.length;
+        audioEngine.updateSystemKineticDynamics(avgSpeed);
+
+        // 如果存在高速度/高活性微粒，或者单细胞游弋冲刺，触发电子微音
+        if (fastestParticle && maxSpeed > 1.25 && Math.random() < 0.28) {
+          audioEngine.playParticleTone(fastestParticle.type, maxSpeed, fastestParticle.x, fastestParticle.y);
+        } else if (Math.random() < 0.08) {
+          const randIdx = Math.floor(Math.random() * particles.length);
+          const randP = particles[randIdx];
+          const spd = Math.sqrt(randP.vx * randP.vx + randP.vy * randP.vy);
+          if (spd > 0.45) {
+            audioEngine.playParticleTone(randP.type, spd, randP.x, randP.y);
+          }
+        }
+      }
+
+      // 鼠标拖拽交互时产生水波电子音效
+      if (mouseState.down && typeof audioEngine !== "undefined" && audioEngine.isEnabled && Math.random() < 0.16) {
+        const toneType = mouseState.button === 2 ? 1 : 2;
+        audioEngine.playParticleTone(toneType, 2.5, mouseState.x, mouseState.y);
+      }
+
+      steps++;
+      if (steps % 10 === 0) {
+        document.getElementById("statSteps").textContent = steps;
+      }
+    }
+
+    // --- 渲染引擎 ---
+    function render() {
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, width, height);
+
+      const particleRadius = 3.6;
+
+      for (let t = 0; t < NUM_TYPES; t++) {
+        const col = COLORS[t];
+        if (!col) continue;
+        ctx.fillStyle = col.hex;
+
+        ctx.beginPath();
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          if (p.type === t) {
+            ctx.moveTo(p.x + particleRadius, p.y);
+            ctx.arc(p.x, p.y, particleRadius, 0, Math.PI * 2);
+          }
+        }
+        ctx.fill();
+      }
+
+      if (mouseState.down) {
+        ctx.strokeStyle = mouseState.button === 2 ? "rgba(255, 82, 82, 0.45)" : "rgba(0, 229, 255, 0.45)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(mouseState.x, mouseState.y, 80, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // --- 主循环与统计 ---
+    let frameCount = 0;
+    let fpsTimer = performance.now();
+
+    function loop(currentTime) {
+      updatePhysics();
+      render();
+
+      frameCount++;
+      if (currentTime - fpsTimer >= 500) {
+        const fps = Math.round((frameCount * 1000) / (currentTime - fpsTimer));
+        document.getElementById("statFps").textContent = fps;
+        frameCount = 0;
+        fpsTimer = currentTime;
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    // --- 矩阵可视化表格渲染 (自适应任意颜色数) ---
+    function renderMatrixTable() {
+      const table = document.getElementById("matrixTable");
+      let html = "<thead><tr><th style='width:24px'></th>";
+      for (let j = 0; j < NUM_TYPES; j++) {
+        html += `<th style="color: ${COLORS[j].hex}">${COLORS[j].name[0]}</th>`;
+      }
+      html += "</tr></thead><tbody>";
+
+      for (let i = 0; i < NUM_TYPES; i++) {
+        html += `<tr><th style="color: ${COLORS[i].hex}">${COLORS[i].name[0]}</th>`;
+        for (let j = 0; j < NUM_TYPES; j++) {
+          const val = matrix[i] && matrix[i][j] !== undefined ? matrix[i][j] : 0.0;
+          let bg;
+          if (val > 0) {
+            bg = `rgba(0, 229, 255, ${Math.min(1.0, Math.abs(val) * 0.9)})`;
+          } else if (val < 0) {
+            bg = `rgba(255, 82, 82, ${Math.min(1.0, Math.abs(val) * 0.9)})`;
+          } else {
+            bg = "rgba(255, 255, 255, 0.05)";
+          }
+          const sign = val > 0 ? "+" : "";
+          html += `<td class="matrix-cell" data-i="${i}" data-j="${j}" style="background: ${bg}; color: ${Math.abs(val) > 0.35 ? '#fff' : '#aaa'}" title="${COLORS[i].name} 受 ${COLORS[j].name} 作用: ${val.toFixed(2)}">${sign}${val.toFixed(1)}</td>`;
+        }
+        html += "</tr>";
+      }
+      html += "</tbody>";
+      table.innerHTML = html;
+
+      table.querySelectorAll(".matrix-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const i = parseInt(cell.getAttribute("data-i"));
+          const j = parseInt(cell.getAttribute("data-j"));
+          let v = matrix[i][j];
+          v += 0.4;
+          if (v > 0.9) v = -0.8;
+          matrix[i][j] = parseFloat(v.toFixed(1));
+          renderMatrixTable();
+        });
+      });
+    }
+
+    // --- 事件监听绑定 ---
+    document.getElementById("addColorBtn").addEventListener("click", addColor);
+    document.getElementById("delColorBtn").addEventListener("click", () => removeColor(null));
+
+    document.querySelectorAll(".btn-preset").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        applyPreset(btn.getAttribute("data-preset"));
+      });
+    });
+
+    document.getElementById("paramCellColors").addEventListener("input", e => {
+      cellColorCount = parseInt(e.target.value);
+      document.getElementById("valCellColors").textContent = cellColorCount + " 种颜色";
+    });
+
+    document.getElementById("paramCount").addEventListener("input", e => {
+      particleCount = parseInt(e.target.value);
+      document.getElementById("valCount").textContent = particleCount;
+      initParticles(true);
+    });
+    document.getElementById("paramRMax").addEventListener("input", e => {
+      rMax = parseInt(e.target.value);
+      document.getElementById("valRMax").textContent = rMax + " px";
+    });
+    document.getElementById("paramFriction").addEventListener("input", e => {
+      friction = parseFloat(e.target.value);
+      document.getElementById("valFriction").textContent = friction.toFixed(3);
+    });
+    document.getElementById("paramJitter").addEventListener("input", e => {
+      jitter = parseFloat(e.target.value);
+      document.getElementById("valJitter").textContent = jitter.toFixed(2);
+    });
+    document.getElementById("paramForce").addEventListener("input", e => {
+      forceMultiplier = parseFloat(e.target.value);
+      document.getElementById("valForce").textContent = forceMultiplier.toFixed(1);
+    });
+    document.getElementById("paramSpeed").addEventListener("input", e => {
+      timeScale = parseFloat(e.target.value);
+      document.getElementById("valSpeed").textContent = timeScale.toFixed(1) + "x";
+    });
+
+    const playPauseBtn = document.getElementById("playPauseBtn");
+    playPauseBtn.addEventListener("click", () => {
+      isPaused = !isPaused;
+      playPauseBtn.textContent = isPaused ? "▶️ 继续" : "⏸️ 暂停";
+    });
+    document.getElementById("wakeBtn").addEventListener("click", wakeUpEnergyPulse);
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      initParticles(true);
+    });
+    document.getElementById("spawnCellBtn").addEventListener("click", () => {
+      injectProtozoanCell(width * 0.5 + (Math.random() - 0.5) * 200, height * 0.5 + (Math.random() - 0.5) * 200, 1.0, cellColorCount);
+    });
+
+    const hud = document.getElementById("hud");
+    function toggleHud() {
+      hud.classList.toggle("hidden");
+    }
+    document.getElementById("toggleHudBtn").addEventListener("click", toggleHud);
+
+    document.getElementById("fullscreenBtn").addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // --- 音频 UI 状态联动与交互绑定 ---
+    function updateAudioUI(enabled) {
+      const topBtn = document.getElementById("audioToggleBtn");
+      const hudBtn = document.getElementById("hudAudioToggleBtn");
+      const badge = document.getElementById("audioStatusBadge");
+      const topIcon = document.getElementById("topAudioIcon");
+      const topText = document.getElementById("topAudioText");
+      const hudIcon = document.getElementById("hudAudioIcon");
+      const hudText = document.getElementById("hudAudioText");
+
+      if (enabled) {
+        if (topBtn) topBtn.classList.add("audio-active");
+        if (hudBtn) {
+          hudBtn.classList.add("active");
+          hudBtn.style.background = "rgba(0, 229, 255, 0.22)";
+        }
+        if (badge) {
+          badge.textContent = "● 演奏中 (LIVE)";
+          badge.style.color = "#00e676";
+        }
+        if (topIcon) topIcon.textContent = "🔊";
+        if (topText) topText.textContent = "音乐声效: 开 (M)";
+        if (hudIcon) hudIcon.textContent = "🔊";
+        if (hudText) hudText.textContent = "音频已开启 (点击静音 M)";
+      } else {
+        if (topBtn) topBtn.classList.remove("audio-active");
+        if (hudBtn) {
+          hudBtn.classList.remove("active");
+          hudBtn.style.background = "rgba(0, 229, 255, 0.08)";
+        }
+        if (badge) {
+          badge.textContent = "● 已静音 (OFF)";
+          badge.style.color = "#ff5252";
+        }
+        if (topIcon) topIcon.textContent = "🔇";
+        if (topText) topText.textContent = "音乐声效: 关 (M)";
+        if (hudIcon) hudIcon.textContent = "🔈";
+        if (hudText) hudText.textContent = "点击开启 粒子音乐与背景声 (M)";
+      }
+    }
+
+    function toggleAudio() {
+      const isNowEnabled = audioEngine.toggle();
+      updateAudioUI(isNowEnabled);
+    }
+
+    document.getElementById("audioToggleBtn").addEventListener("click", toggleAudio);
+    document.getElementById("hudAudioToggleBtn").addEventListener("click", toggleAudio);
+
+    document.getElementById("paramAmbientVol").addEventListener("input", e => {
+      const val = parseFloat(e.target.value);
+      audioEngine.setAmbientVolume(val);
+      document.getElementById("valAmbientVol").textContent = Math.round(val * 100) + "%";
+    });
+
+    document.getElementById("paramParticleVol").addEventListener("input", e => {
+      const val = parseFloat(e.target.value);
+      audioEngine.setParticleVolume(val);
+      document.getElementById("valParticleVol").textContent = Math.round(val * 100) + "%";
+    });
+
+    document.getElementById("paramBassCut").addEventListener("input", e => {
+      const val = parseFloat(e.target.value);
+      audioEngine.setBassCut(val);
+      document.getElementById("valBassCut").textContent = val + " Hz";
+    });
+
+    document.querySelectorAll("[data-scale]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-scale]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const scaleKey = btn.getAttribute("data-scale");
+        audioEngine.setScale(scaleKey);
+      });
+    });
+
+    // 快捷键
+    window.addEventListener("keydown", e => {
+      if (e.key === "h" || e.key === "H") {
+        toggleHud();
+      } else if (e.key === "m" || e.key === "M") {
+        toggleAudio();
+      } else if (e.code === "Space") {
+        e.preventDefault();
+        playPauseBtn.click();
+      } else if (e.key === "c" || e.key === "C") {
+        injectProtozoanCell(width * 0.5, height * 0.5, 1.0, cellColorCount);
+      } else if (e.key === "w" || e.key === "W") {
+        wakeUpEnergyPulse();
+      } else if (e.key === "r" || e.key === "R") {
+        initParticles(true);
+      }
+    });
+
+    // 鼠标交互
+    const mouseState = { x: 0, y: 0, down: false, button: 0 };
+    canvas.addEventListener("mousedown", e => {
+      mouseState.down = true;
+      mouseState.button = e.button;
+      mouseState.x = e.clientX;
+      mouseState.y = e.clientY;
+    });
+    canvas.addEventListener("mousemove", e => {
+      mouseState.x = e.clientX;
+      mouseState.y = e.clientY;
+    });
+    window.addEventListener("mouseup", () => {
+      mouseState.down = false;
+    });
+    canvas.addEventListener("contextmenu", e => {
+      e.preventDefault();
+    });
+    canvas.addEventListener("dblclick", e => {
+      injectProtozoanCell(e.clientX, e.clientY, 1.0, cellColorCount);
+    });
+
+    // 启动系统
+    updateColorUI();
+    applyPreset("protozoan");
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
