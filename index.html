@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>群鸟算法与涌现：单细胞生命模拟器 (Particle Life)</title>
   <style>
     * {
@@ -10,6 +10,8 @@
       padding: 0;
       box-sizing: border-box;
       user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
     body, html {
       width: 100%;
@@ -25,6 +27,7 @@
       height: 100vh;
       background: #000000;
       cursor: crosshair;
+      touch-action: none; /* 彻底禁用默认双指缩放和滚动，确保丝滑触摸划动粒子 */
     }
 
     /* 沉浸式浮动控制面板 (玻璃拟态 Glassmorphism) */
@@ -325,14 +328,14 @@
       box-shadow: 0 0 12px rgba(0, 180, 216, 0.4);
     }
 
-    /* 右上角悬浮纯享/全屏按钮 */
+    /* 右上角悬浮快捷按钮与自适应 */
     .top-right-tools {
       position: absolute;
       top: 20px;
       right: 20px;
       display: flex;
-      gap: 10px;
-      z-index: 10;
+      gap: 8px;
+      z-index: 40;
     }
     .tool-pill {
       background: rgba(12, 12, 18, 0.75);
@@ -349,6 +352,7 @@
       gap: 6px;
       transition: all 0.2s;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      white-space: nowrap;
     }
     .tool-pill:hover {
       background: rgba(255, 255, 255, 0.15);
@@ -360,6 +364,34 @@
       background: rgba(0, 229, 255, 0.2);
       color: #00e5ff;
       box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
+    }
+
+    .tool-label-short {
+      display: none;
+    }
+    .tool-label-full {
+      display: inline;
+    }
+
+    .hud-close-btn {
+      display: none;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #bbb;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      margin-left: 6px;
+    }
+    .hud-close-btn:hover {
+      background: rgba(255, 82, 82, 0.3);
+      border-color: #ff5252;
+      color: #fff;
     }
 
     /* 底部实时统计 */
@@ -389,32 +421,104 @@
       pointer-events: none;
       z-index: 5;
     }
+
+    /* 手机屏幕专属响应式设计 (<= 768px) */
+    @media (max-width: 768px) {
+      .tool-label-full {
+        display: none !important;
+      }
+      .tool-label-short {
+        display: inline !important;
+      }
+      .top-right-tools {
+        top: 8px;
+        right: 8px;
+        left: 8px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 4px;
+        z-index: 40;
+      }
+      .tool-pill {
+        padding: 5px 8px;
+        font-size: 11px;
+        border-radius: 14px;
+        gap: 3px;
+      }
+      /* 控制面板置于顶部工具条下方，绝不遮挡顶部按钮，宽度自适应 */
+      .hud {
+        top: 46px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-width: calc(100vw - 16px);
+        max-height: calc(100vh - 54px);
+        padding: 12px 14px;
+        border-radius: 10px;
+        z-index: 30;
+      }
+      .hud-close-btn {
+        display: inline-flex;
+      }
+      .title-row h1 {
+        font-size: 13px;
+      }
+      .presets-grid {
+        gap: 4px;
+      }
+      .btn-preset {
+        padding: 5px 6px;
+        font-size: 10px;
+      }
+      .stats-overlay {
+        bottom: 6px;
+        left: 8px;
+        font-size: 9px;
+        line-height: 1.4;
+      }
+      .tip-hud {
+        bottom: 6px;
+        right: 8px;
+        font-size: 9px;
+      }
+    }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
 
-  <!-- 右上角快捷工具栏 -->
+  <!-- 右上角快捷工具栏 (自适应手机/桌面) -->
   <div class="top-right-tools">
-    <div class="tool-pill" id="audioToggleBtn" title="快捷键: M 开启/关闭粒子电子声与背景音乐">
-      <span id="topAudioIcon">🔇</span> <span id="topAudioText">音乐声效: 关 (M)</span>
+    <div class="tool-pill" id="audioToggleBtn" title="开启/关闭粒子电子声与背景音乐">
+      <span id="topAudioIcon">🔇</span>
+      <span class="tool-label-full" id="topAudioText">音乐声效: 关 (M)</span>
+      <span class="tool-label-short" id="topAudioTextShort">音乐: 关</span>
     </div>
-    <div class="tool-pill" id="toggleHudBtn" title="快捷键: H 沉浸隐藏/唤醒控制面板">
-      <span>👁️</span> 影院模式 (H)
+    <div class="tool-pill" id="toggleHudBtn" title="显示/隐藏控制面板">
+      <span>👁️</span>
+      <span class="tool-label-full">影院模式 (H)</span>
+      <span class="tool-label-short">面板</span>
     </div>
-    <div class="tool-pill" id="spawnCellBtn" title="在画面中心注入一个原版同心圆单细胞">
-      <span>🧬</span> 注入游动单细胞 (C)
+    <div class="tool-pill" id="spawnCellBtn" title="在画面中心注入一个游动单细胞">
+      <span>🧬</span>
+      <span class="tool-label-full">注入游动单细胞 (C)</span>
+      <span class="tool-label-short">注入</span>
     </div>
     <div class="tool-pill" id="fullscreenBtn" title="全屏沉浸演示">
-      <span>⛶</span> 全屏模式
+      <span>⛶</span>
+      <span class="tool-label-full">全屏模式</span>
+      <span class="tool-label-short">全屏</span>
     </div>
   </div>
 
-  <!-- 左侧控制面板 -->
+  <!-- 控制面板 (带关闭按钮与手机端防遮挡) -->
   <div class="hud" id="hud">
     <div class="title-row">
       <h1><span>🦠</span> 单细胞生命涌现模拟</h1>
-      <span class="badge">EMERGENCE</span>
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <span class="badge">EMERGENCE</span>
+        <button class="hud-close-btn" id="hudCloseBtn" title="收起控制面板">✕</button>
+      </div>
     </div>
     <p class="desc">
       视频《群鸟算法的魔术与涌现》末尾展示的活性物质粒子系统（Active Matter Particle Life）。生命持续游弋的核心在于<b>非对称相互作用力（打破牛顿第三定律）</b>与活性扰动，源源不断向系统注入动能，绝不陷入死锁定格。
@@ -578,7 +682,8 @@
 
   <!-- 底部右侧提示 -->
   <div class="tip-hud">
-    鼠标左键拖拽吸引微粒 | 右键排斥微粒 | 双击注入单细胞 | 按空格暂停 | 按 M 键开启/关闭电子音乐 | 按 H 键影院模式
+    <span class="tool-label-full">鼠标左键拖拽吸引微粒 | 右键排斥微粒 | 双击注入单细胞 | 空格暂停 | M 音乐 | H 面板</span>
+    <span class="tool-label-short">👆 单指拖动吸引 | 双指排斥 | 双击注入</span>
   </div>
 
   <script>
@@ -1728,6 +1833,8 @@
       hud.classList.toggle("hidden");
     }
     document.getElementById("toggleHudBtn").addEventListener("click", toggleHud);
+    const hudCloseBtn = document.getElementById("hudCloseBtn");
+    if (hudCloseBtn) hudCloseBtn.addEventListener("click", toggleHud);
 
     document.getElementById("fullscreenBtn").addEventListener("click", () => {
       if (!document.fullscreenElement) {
@@ -1744,6 +1851,7 @@
       const badge = document.getElementById("audioStatusBadge");
       const topIcon = document.getElementById("topAudioIcon");
       const topText = document.getElementById("topAudioText");
+      const topTextShort = document.getElementById("topAudioTextShort");
       const hudIcon = document.getElementById("hudAudioIcon");
       const hudText = document.getElementById("hudAudioText");
 
@@ -1759,6 +1867,7 @@
         }
         if (topIcon) topIcon.textContent = "🔊";
         if (topText) topText.textContent = "音乐声效: 开 (M)";
+        if (topTextShort) topTextShort.textContent = "音乐: 开";
         if (hudIcon) hudIcon.textContent = "🔊";
         if (hudText) hudText.textContent = "音频已开启 (点击静音 M)";
       } else {
@@ -1773,6 +1882,7 @@
         }
         if (topIcon) topIcon.textContent = "🔇";
         if (topText) topText.textContent = "音乐声效: 关 (M)";
+        if (topTextShort) topTextShort.textContent = "音乐: 关";
         if (hudIcon) hudIcon.textContent = "🔈";
         if (hudText) hudText.textContent = "点击开启 粒子音乐与背景声 (M)";
       }
@@ -1831,7 +1941,7 @@
       }
     });
 
-    // 鼠标交互
+    // 鼠标与触摸交互
     const mouseState = { x: 0, y: 0, down: false, button: 0 };
     canvas.addEventListener("mousedown", e => {
       mouseState.down = true;
@@ -1851,6 +1961,57 @@
     });
     canvas.addEventListener("dblclick", e => {
       injectProtozoanCell(e.clientX, e.clientY, 1.0, cellColorCount);
+    });
+
+    // 移动端触摸手势交互 (单指滑动吸引粒子，双指滑动排斥粒子，双击注入单细胞)
+    let lastTapTime = 0;
+    canvas.addEventListener("touchstart", e => {
+      e.preventDefault();
+      const touches = e.touches;
+      if (touches.length > 0) {
+        const t = touches[0];
+        const now = performance.now();
+        if (now - lastTapTime < 320 && touches.length === 1) {
+          injectProtozoanCell(t.clientX, t.clientY, 1.0, cellColorCount);
+        }
+        lastTapTime = now;
+
+        mouseState.down = true;
+        mouseState.x = t.clientX;
+        mouseState.y = t.clientY;
+        mouseState.button = touches.length >= 2 ? 2 : 0;
+      }
+    }, { passive: false });
+
+    canvas.addEventListener("touchmove", e => {
+      e.preventDefault();
+      const touches = e.touches;
+      if (touches.length > 0) {
+        const t = touches[0];
+        mouseState.x = t.clientX;
+        mouseState.y = t.clientY;
+        mouseState.down = true;
+        mouseState.button = touches.length >= 2 ? 2 : 0;
+      }
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", e => {
+      if (e.touches.length === 0) {
+        mouseState.down = false;
+      } else {
+        const t = e.touches[0];
+        mouseState.x = t.clientX;
+        mouseState.y = t.clientY;
+        mouseState.button = e.touches.length >= 2 ? 2 : 0;
+      }
+    });
+
+    canvas.addEventListener("touchcancel", () => {
+      mouseState.down = false;
+    });
+
+    window.addEventListener("orientationchange", () => {
+      setTimeout(resizeCanvas, 150);
     });
 
     // 启动系统
