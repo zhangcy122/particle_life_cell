@@ -289,6 +289,39 @@
       filter: brightness(1.3);
     }
 
+    .matrix-actions-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+    }
+    .btn-matrix-action {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 6px;
+      color: #ddd;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .btn-matrix-action:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: #00e5ff;
+      color: #fff;
+    }
+    .btn-zero-matrix:hover {
+      border-color: #ff5252;
+      background: rgba(255, 82, 82, 0.18);
+      color: #ff8a80;
+    }
+
     /* 底部操作工具栏 */
     .actions-row {
       display: flex;
@@ -422,14 +455,25 @@
       z-index: 5;
     }
 
-    /* 手机屏幕专属响应式设计 (<= 768px) */
-    @media (max-width: 768px) {
+    /* 平板与折叠屏专属响应式适配 (<= 1024px) */
+    @media (max-width: 1024px) {
       .tool-label-full {
         display: none !important;
       }
       .tool-label-short {
         display: inline !important;
       }
+      .top-right-tools {
+        gap: 6px;
+      }
+      .tool-pill {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+    }
+
+    /* 手机屏幕专属响应式设计 (<= 768px) */
+    @media (max-width: 768px) {
       .top-right-tools {
         top: 8px;
         right: 8px;
@@ -482,6 +526,247 @@
         font-size: 9px;
       }
     }
+
+    /* 全屏沉浸式矩阵编辑器模态窗 */
+    .matrix-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      background: rgba(4, 4, 8, 0.88);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 20px;
+    }
+    .matrix-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .matrix-modal-content {
+      width: 100%;
+      max-width: 920px;
+      max-height: 94vh;
+      background: rgba(14, 14, 22, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 16px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: scale(0.96);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .matrix-modal.active .matrix-modal-content {
+      transform: scale(1);
+    }
+    .matrix-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      background: rgba(20, 20, 32, 0.6);
+    }
+    .matrix-modal-header h2 {
+      font-size: 16px;
+      color: #fff;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .matrix-modal-sub {
+      font-size: 11.5px;
+      color: #9aa0a6;
+      line-height: 1.45;
+    }
+    .matrix-modal-close {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 18px;
+      color: #ddd;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .matrix-modal-close:hover {
+      background: rgba(255, 82, 82, 0.25);
+      border-color: #ff5252;
+      color: #fff;
+    }
+    .matrix-editor-toolbar {
+      padding: 12px 20px;
+      background: rgba(0, 0, 0, 0.45);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .matrix-selected-info {
+      font-size: 12px;
+      color: #ccc;
+    }
+    .matrix-slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      max-width: 380px;
+    }
+    .matrix-slider-val {
+      font-family: monospace;
+      font-weight: bold;
+      font-size: 13px;
+      color: #00e5ff;
+      min-width: 42px;
+      text-align: right;
+    }
+    .matrix-quick-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .btn-matrix-quick {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 6px;
+      color: #ddd;
+      padding: 5px 9px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-matrix-quick:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: #00e5ff;
+      color: #fff;
+    }
+    .matrix-modal-table-container {
+      flex: 1;
+      overflow: auto;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 220px;
+    }
+    .matrix-modal-table {
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    .matrix-modal-table th {
+      padding: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .matrix-modal-table td {
+      padding: 3px;
+      text-align: center;
+    }
+    .modal-cell {
+      width: 48px;
+      height: 36px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      user-select: none;
+    }
+    .modal-cell:hover {
+      transform: scale(1.12);
+      border-color: rgba(255, 255, 255, 0.4);
+      z-index: 2;
+    }
+    .modal-cell.selected {
+      border-color: #00e5ff !important;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.7);
+      transform: scale(1.1);
+      z-index: 3;
+    }
+    .matrix-modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: rgba(10, 10, 16, 0.7);
+    }
+    .matrix-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 11px;
+      color: #888;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    @media (max-width: 768px) {
+      .matrix-modal {
+        padding: 6px;
+      }
+      .matrix-modal-content {
+        max-height: 98vh;
+        border-radius: 12px;
+      }
+      .matrix-modal-header {
+        padding: 10px 12px;
+      }
+      .matrix-modal-header h2 {
+        font-size: 14px;
+      }
+      .matrix-editor-toolbar {
+        padding: 8px 10px;
+        gap: 8px;
+      }
+      .matrix-slider-wrap {
+        max-width: 100%;
+        width: 100%;
+      }
+      .modal-cell {
+        width: 38px;
+        height: 30px;
+        font-size: 10px;
+        border-radius: 4px;
+      }
+      .matrix-modal-table th {
+        padding: 2px;
+        font-size: 9px;
+      }
+      .matrix-modal-footer {
+        padding: 10px 12px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
   </style>
 </head>
 <body>
@@ -508,6 +793,57 @@
       <span>⛶</span>
       <span class="tool-label-full">全屏模式</span>
       <span class="tool-label-short">全屏</span>
+    </div>
+  </div>
+
+  <!-- 全屏沉浸式矩阵编辑器模态窗 -->
+  <div class="matrix-modal" id="matrixModal">
+    <div class="matrix-modal-content">
+      <div class="matrix-modal-header">
+        <div>
+          <h2><span>📊</span> 相互作用力矩阵 · 全屏交互实验室</h2>
+          <p class="matrix-modal-sub">
+            点击任意单元格，拖动滑块快速调控物种吸引/排斥力。<b>青绿为引，红橙为斥</b>。非对称作用力打破牛顿第三定律，驱动生命自主游动。
+          </p>
+        </div>
+        <button class="matrix-modal-close" id="closeMatrixModalBtn" title="关闭全屏编辑器 (Esc)">✕ 关闭</button>
+      </div>
+
+      <!-- 选中单元格滑块快速微调条 -->
+      <div class="matrix-editor-toolbar" id="matrixEditorToolbar">
+        <div class="matrix-selected-info" id="matrixSelectedInfo">
+          <span>点击单元格调节：</span><span id="selPairText" style="color: #00e5ff; font-weight: bold; margin-left: 4px;">未选择 (点击下方任一格子)</span>
+        </div>
+        <div class="matrix-slider-wrap">
+          <span style="color: #ff5252; font-size: 11px;">-1.0 强排斥</span>
+          <input type="range" id="matrixCellSlider" min="-1.0" max="1.0" step="0.05" value="0.0" disabled>
+          <span style="color: #00e5ff; font-size: 11px;">+1.0 强吸引</span>
+          <span class="matrix-slider-val" id="matrixCellSliderVal">0.00</span>
+        </div>
+        <div class="matrix-quick-actions">
+          <button class="btn-matrix-quick" id="modalZeroBtn">⭕ 全局置零</button>
+          <button class="btn-matrix-quick" id="modalRandomBtn">🎲 随机生成</button>
+          <button class="btn-matrix-quick" id="modalSymmetricBtn">⚖️ 对称化</button>
+          <button class="btn-matrix-quick" id="modalAntiSymmetricBtn">⚡ 强化推进反对称</button>
+        </div>
+      </div>
+
+      <!-- 大尺寸全屏矩阵表格 -->
+      <div class="matrix-modal-table-container">
+        <table class="matrix-modal-table" id="matrixModalTable"></table>
+      </div>
+
+      <!-- 底部操作与图例说明 -->
+      <div class="matrix-modal-footer">
+        <div class="matrix-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#00e5ff;"></span> +0.1 ~ +1.0 相互吸引（追赶聚拢）</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#ff5252;"></span> -0.1 ~ -1.0 相互排斥（躲避扩散）</span>
+          <span class="legend-item"><span class="legend-dot" style="background:rgba(255,255,255,0.2);"></span> 0.0 互不影响（惯性漂移）</span>
+        </div>
+        <button class="btn-action btn-primary" id="modalConfirmBtn" style="padding: 8px 22px; font-size: 12px; max-width: 180px;">
+          ✔ 完成并返回模拟
+        </button>
+      </div>
     </div>
   </div>
 
@@ -572,6 +908,14 @@
 
     <div class="control-group">
       <div class="control-label">
+        <span>初始单细胞数量</span>
+        <span class="control-val" id="valInitCells">3 个游动体</span>
+      </div>
+      <input type="range" id="paramInitCells" min="0" max="8" step="1" value="3">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
         <span>粒子总数</span>
         <span class="control-val" id="valCount">2400</span>
       </div>
@@ -626,6 +970,22 @@
       <input type="range" id="paramParticleRadius" min="1.5" max="6.0" step="0.1" value="2.8">
     </div>
 
+    <div class="control-group">
+      <div class="control-label">
+        <span>触摸吸引力 (Attract Force)</span>
+        <span class="control-val" id="valTouchAttract">1.2x</span>
+      </div>
+      <input type="range" id="paramTouchAttract" min="0.2" max="3.5" step="0.1" value="1.2">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>触摸排斥力 (Repel Force)</span>
+        <span class="control-val" id="valTouchRepel">1.8x</span>
+      </div>
+      <input type="range" id="paramTouchRepel" min="0.2" max="4.0" step="0.1" value="1.8">
+    </div>
+
     <!-- 空间音乐与粒子声化控制 -->
     <div class="section-title">
       <span>🎵 空间音乐与粒子生乐</span>
@@ -669,9 +1029,30 @@
       </div>
     </div>
 
-    <div class="section-title">📊 相互作用力矩阵 (实时可调引/斥)</div>
+    <div class="section-title">
+      <span>📊 相互作用力矩阵 (实时微调)</span>
+      <div style="display: flex; gap: 5px;">
+        <button class="btn-color-tool" id="quickFullscreenMatrixBtn" style="padding: 2px 8px; font-size: 10px; width: auto;" title="全屏沉浸矩阵编辑器">
+          <span>⛶</span> 全屏编辑
+        </button>
+        <button class="btn-color-tool" id="quickZeroBtn" style="padding: 2px 8px; font-size: 10px; width: auto;" title="清空全部相互作用力（全部归零）">
+          <span>⭕</span> 全部置零
+        </button>
+      </div>
+    </div>
     <div class="matrix-container">
       <table class="matrix-table" id="matrixTable"></table>
+    </div>
+    <div class="matrix-actions-row">
+      <button class="btn-matrix-action btn-zero-matrix" id="zeroMatrixBtn" title="清空矩阵内全部相互作用力，全部设为 0.0">
+        <span>⭕</span> 全部置零
+      </button>
+      <button class="btn-matrix-action" id="openFullscreenMatrixBtn" style="border-color: #00e5ff; background: rgba(0, 229, 255, 0.12);" title="打开大屏/全屏沉浸式矩阵编辑器">
+        <span>⛶</span> 全屏编辑矩阵
+      </button>
+      <button class="btn-matrix-action" id="randomMatrixBtn" title="随机生成新的微粒引力与斥力矩阵">
+        <span>🎲</span> 随机新矩阵
+      </button>
     </div>
 
     <div class="actions-row">
@@ -731,6 +1112,9 @@
     let steps = 0;
     let currentPresetName = "protozoan";
     let cellColorCount = NUM_TYPES; // 注入单细胞时指定的颜色数 (默认使用全部当前颜色)
+    let initialCellCount = isMobile ? 2 : 3; // 初始生成的单细胞游动体数量
+    let touchAttractStrength = 1.2; // 触摸吸引力乘数
+    let touchRepelStrength = 1.8;   // 触摸排斥力乘数
 
     // 交互力矩阵 matrix[i][j] (动态尺寸 NUM_TYPES × NUM_TYPES)
     let matrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
@@ -1398,7 +1782,7 @@
     }
 
     // 注入活体单细胞 (严格支持注入指定的颜色种类数)
-    function injectProtozoanCell(cx, cy, scale = 1.0, colorCount = cellColorCount) {
+    function injectProtozoanCell(cx, cy, scale = 1.0, colorCount = cellColorCount, updateClusterStat = false) {
       const k = Math.max(1, Math.min(colorCount, NUM_TYPES));
       if (k === 1) {
         for (let i = 0; i < 180; i++) {
@@ -1524,24 +1908,74 @@
       }
       if (typeof audioEngine !== "undefined") audioEngine.playCellSpawnEffect();
       document.getElementById("statParticles").textContent = particles.length;
+      if (updateClusterStat) {
+        const clusterDisplay = document.getElementById("statClusters");
+        if (clusterDisplay) clusterDisplay.textContent = (parseInt(clusterDisplay.textContent) || 0) + 1;
+      }
     }
 
-    // 初始化微粒
+    // 初始化微粒 (严格支持自定义初始单细胞数量与自适应空间排布)
     function initParticles(seedCells = true) {
       particles = [];
       steps = 0;
 
-      if (seedCells) {
+      const clusterDisplay = document.getElementById("statClusters");
+      if (seedCells && initialCellCount > 0) {
+        if (clusterDisplay) clusterDisplay.textContent = initialCellCount;
+
         if (width < 600) {
-          injectProtozoanCell(width * 0.50, height * 0.40, 0.90, cellColorCount); // 手机端主单细胞
-          injectProtozoanCell(width * 0.50, height * 0.72, 0.70, cellColorCount); // 手机端伴随单细胞
+          // 手机竖屏排布 (避开顶部工具条，在可视区居中/环绕排布)
+          if (initialCellCount === 1) {
+            injectProtozoanCell(width * 0.50, height * 0.52, 0.95, cellColorCount);
+          } else if (initialCellCount === 2) {
+            injectProtozoanCell(width * 0.50, height * 0.38, 0.90, cellColorCount);
+            injectProtozoanCell(width * 0.50, height * 0.70, 0.75, cellColorCount);
+          } else if (initialCellCount === 3) {
+            injectProtozoanCell(width * 0.50, height * 0.32, 0.88, cellColorCount);
+            injectProtozoanCell(width * 0.32, height * 0.62, 0.78, cellColorCount);
+            injectProtozoanCell(width * 0.68, height * 0.74, 0.78, cellColorCount);
+          } else {
+            // >= 4 个细胞：在中心椭圆环形均匀散布
+            const cx = width * 0.50;
+            const cy = height * 0.56;
+            const rx = width * 0.28;
+            const ry = height * 0.24;
+            const scale = Math.max(0.58, 0.96 - initialCellCount * 0.045);
+            for (let i = 0; i < initialCellCount; i++) {
+              const ang = (i / initialCellCount) * Math.PI * 2 - Math.PI / 2;
+              const px = cx + Math.cos(ang) * rx;
+              const py = cy + Math.sin(ang) * ry;
+              injectProtozoanCell(px, py, scale, cellColorCount);
+            }
+          }
         } else {
-          injectProtozoanCell(width * 0.72, height * 0.48, 1.0, cellColorCount);  // 右侧主单细胞
-          injectProtozoanCell(width * 0.30, height * 0.68, 0.88, cellColorCount); // 左下副单细胞
-          injectProtozoanCell(width * 0.48, height * 0.28, 0.80, cellColorCount); // 顶部副单细胞
+          // 宽屏 / 平板排布 (避开左侧 HUD，在右侧开阔区黄金视觉点分布)
+          const cx_center = width > 900 ? width * 0.62 : width * 0.56;
+          const cy_center = height * 0.50;
+          if (initialCellCount === 1) {
+            injectProtozoanCell(cx_center, cy_center, 1.0, cellColorCount);
+          } else if (initialCellCount === 2) {
+            injectProtozoanCell(cx_center - width * 0.15, cy_center - height * 0.08, 0.95, cellColorCount);
+            injectProtozoanCell(cx_center + width * 0.15, cy_center + height * 0.08, 0.90, cellColorCount);
+          } else if (initialCellCount === 3) {
+            injectProtozoanCell(width * 0.72, height * 0.48, 1.0, cellColorCount);  // 右侧主单细胞
+            injectProtozoanCell(width * 0.35, height * 0.68, 0.88, cellColorCount); // 左下副单细胞
+            injectProtozoanCell(width * 0.48, height * 0.28, 0.82, cellColorCount); // 顶部副单细胞
+          } else {
+            // >= 4 个细胞：在右侧开阔区椭圆分布
+            const rx = Math.min(width * 0.20, 360);
+            const ry = Math.min(height * 0.30, 300);
+            const scale = Math.max(0.65, 1.05 - initialCellCount * 0.045);
+            for (let i = 0; i < initialCellCount; i++) {
+              const ang = (i / initialCellCount) * Math.PI * 2 - Math.PI / 2;
+              const px = cx_center + Math.cos(ang) * rx;
+              const py = cy_center + Math.sin(ang) * ry;
+              injectProtozoanCell(px, py, scale, cellColorCount);
+            }
+          }
         }
 
-        const remaining = Math.max(150, particleCount - particles.length);
+        const remaining = Math.max(120, particleCount - particles.length);
         for (let i = 0; i < remaining; i++) {
           const t = Math.floor(Math.random() * NUM_TYPES);
           particles.push({
@@ -1553,6 +1987,7 @@
           });
         }
       } else {
+        if (clusterDisplay) clusterDisplay.textContent = 0;
         // 均匀散布所有启用颜色微粒
         for (let i = 0; i < particleCount; i++) {
           const t = i % NUM_TYPES;
@@ -1660,12 +2095,12 @@
           if (md2 < touchAttractR2 && md2 > 9) {
             const mr = Math.sqrt(md2);
             if (isRepel) {
-              const mf = (-1.8 * 220 / mr) * fMult;
+              const mf = (-touchRepelStrength * 220 / mr) * fMult;
               fx += (mdx / mr) * mf;
               fy += (mdy / mr) * mf;
             } else {
               // 线性平滑渐变引力 + 中心柔和微旋，形成行星光环式优雅流动
-              const pull = 1.35 * (1.0 - mr / touchAttractR) * 220 * fMult;
+              const pull = touchAttractStrength * (1.0 - mr / touchAttractR) * 220 * fMult;
               fx += (mdx / mr) * pull;
               fy += (mdy / mr) * pull;
               if (mr < 50) {
@@ -1832,7 +2267,184 @@
       });
     }
 
+    // --- 矩阵置零与随机操作 ---
+    function zeroMatrix() {
+      for (let i = 0; i < NUM_TYPES; i++) {
+        if (!matrix[i]) matrix[i] = [];
+        for (let j = 0; j < NUM_TYPES; j++) {
+          matrix[i][j] = 0.0;
+        }
+      }
+      document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+      document.getElementById("statMode").textContent = "全部置零 (Zero Force) 惯性漂移";
+      renderMatrixTable();
+      if (typeof audioEngine !== "undefined" && audioEngine.isEnabled) {
+        audioEngine.playParticleTone(0, 1.2, width * 0.5, height * 0.5);
+      }
+    }
+
+    function randomizeMatrix() {
+      for (let i = 0; i < NUM_TYPES; i++) {
+        if (!matrix[i]) matrix[i] = [];
+        for (let j = 0; j < NUM_TYPES; j++) {
+          matrix[i][j] = parseFloat(((Math.random() * 2 - 1) * 0.8).toFixed(1));
+        }
+      }
+      document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+      document.getElementById("statMode").textContent = "随机探索矩阵 (Random Matrix)";
+      renderMatrixTable();
+      if (typeof audioEngine !== "undefined" && audioEngine.isEnabled) {
+        audioEngine.playParticleTone(1, 1.8, width * 0.5, height * 0.5);
+      }
+    }
+
+    // --- 全屏矩阵交互实验室逻辑 ---
+    const matrixModal = document.getElementById("matrixModal");
+    let selectedCell = null; // { i, j }
+
+    function openMatrixModal() {
+      if (!matrixModal) return;
+      matrixModal.classList.add("active");
+      renderMatrixModalTable();
+      if (NUM_TYPES >= 2) selectModalCell(0, 1);
+    }
+
+    function closeMatrixModal() {
+      if (!matrixModal) return;
+      matrixModal.classList.remove("active");
+      selectedCell = null;
+      renderMatrixTable(); // 保证主面板表格同步刷新
+    }
+
+    function renderMatrixModalTable() {
+      const table = document.getElementById("matrixModalTable");
+      if (!table) return;
+      let html = "<thead><tr><th style='width:70px; color:#888; font-size:10px;'>受力\\施力</th>";
+      for (let j = 0; j < NUM_TYPES; j++) {
+        html += `<th style="color: ${COLORS[j].hex};"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${COLORS[j].hex}; margin-right:4px;"></span>${COLORS[j].name}</th>`;
+      }
+      html += "</tr></thead><tbody>";
+
+      for (let i = 0; i < NUM_TYPES; i++) {
+        html += `<tr><th style="color: ${COLORS[i].hex}; text-align:right;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${COLORS[i].hex}; margin-right:4px;"></span>${COLORS[i].name}</th>`;
+        for (let j = 0; j < NUM_TYPES; j++) {
+          const val = matrix[i] && matrix[i][j] !== undefined ? matrix[i][j] : 0.0;
+          let bg;
+          if (val > 0) {
+            bg = `rgba(0, 229, 255, ${Math.min(1.0, Math.abs(val) * 0.9)})`;
+          } else if (val < 0) {
+            bg = `rgba(255, 82, 82, ${Math.min(1.0, Math.abs(val) * 0.9)})`;
+          } else {
+            bg = "rgba(255, 255, 255, 0.05)";
+          }
+          const sign = val > 0 ? "+" : "";
+          const isSelected = selectedCell && selectedCell.i === i && selectedCell.j === j;
+          html += `<td><div class="modal-cell ${isSelected ? 'selected' : ''}" data-i="${i}" data-j="${j}" style="background: ${bg}; color: ${Math.abs(val) > 0.35 ? '#fff' : '#aaa'};">${sign}${val.toFixed(1)}</div></td>`;
+        }
+        html += "</tr>";
+      }
+      html += "</tbody>";
+      table.innerHTML = html;
+
+      table.querySelectorAll(".modal-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const i = parseInt(cell.getAttribute("data-i"));
+          const j = parseInt(cell.getAttribute("data-j"));
+          selectModalCell(i, j);
+        });
+      });
+    }
+
+    function selectModalCell(i, j) {
+      selectedCell = { i, j };
+      const slider = document.getElementById("matrixCellSlider");
+      const sliderVal = document.getElementById("matrixCellSliderVal");
+      const info = document.getElementById("selPairText");
+
+      const val = matrix[i][j];
+      if (slider) {
+        slider.disabled = false;
+        slider.value = val;
+      }
+      if (sliderVal) sliderVal.textContent = (val > 0 ? "+" : "") + val.toFixed(2);
+      if (info) {
+        info.innerHTML = `<span style="color:${COLORS[i].hex}">${COLORS[i].name}</span> 受 <span style="color:${COLORS[j].hex}">${COLORS[j].name}</span> 作用力`;
+      }
+
+      document.querySelectorAll(".modal-cell").forEach(c => c.classList.remove("selected"));
+      const currentCell = document.querySelector(`.modal-cell[data-i="${i}"][data-j="${j}"]`);
+      if (currentCell) currentCell.classList.add("selected");
+    }
+
+    document.getElementById("matrixCellSlider").addEventListener("input", e => {
+      if (!selectedCell) return;
+      const val = parseFloat(e.target.value);
+      matrix[selectedCell.i][selectedCell.j] = parseFloat(val.toFixed(2));
+      document.getElementById("matrixCellSliderVal").textContent = (val > 0 ? "+" : "") + val.toFixed(2);
+
+      const cellEl = document.querySelector(`.modal-cell[data-i="${selectedCell.i}"][data-j="${selectedCell.j}"]`);
+      if (cellEl) {
+        let bg;
+        if (val > 0) bg = `rgba(0, 229, 255, ${Math.min(1.0, Math.abs(val) * 0.9)})`;
+        else if (val < 0) bg = `rgba(255, 82, 82, ${Math.min(1.0, Math.abs(val) * 0.9)})`;
+        else bg = "rgba(255, 255, 255, 0.05)";
+        cellEl.style.background = bg;
+        cellEl.style.color = Math.abs(val) > 0.35 ? '#fff' : '#aaa';
+        cellEl.textContent = (val > 0 ? "+" : "") + val.toFixed(1);
+      }
+      renderMatrixTable();
+    });
+
+    document.getElementById("modalZeroBtn").addEventListener("click", () => {
+      zeroMatrix();
+      renderMatrixModalTable();
+      if (selectedCell) selectModalCell(selectedCell.i, selectedCell.j);
+    });
+
+    document.getElementById("modalRandomBtn").addEventListener("click", () => {
+      randomizeMatrix();
+      renderMatrixModalTable();
+      if (selectedCell) selectModalCell(selectedCell.i, selectedCell.j);
+    });
+
+    document.getElementById("modalSymmetricBtn").addEventListener("click", () => {
+      for (let i = 0; i < NUM_TYPES; i++) {
+        for (let j = i + 1; j < NUM_TYPES; j++) {
+          matrix[j][i] = matrix[i][j];
+        }
+      }
+      renderMatrixModalTable();
+      renderMatrixTable();
+      if (selectedCell) selectModalCell(selectedCell.i, selectedCell.j);
+    });
+
+    document.getElementById("modalAntiSymmetricBtn").addEventListener("click", () => {
+      for (let i = 0; i < NUM_TYPES; i++) {
+        matrix[i][i] = 0.0;
+        for (let j = i + 1; j < NUM_TYPES; j++) {
+          const val = matrix[i][j] !== 0 ? matrix[i][j] : 0.65;
+          matrix[i][j] = val;
+          matrix[j][i] = -val;
+        }
+      }
+      renderMatrixModalTable();
+      renderMatrixTable();
+      if (selectedCell) selectModalCell(selectedCell.i, selectedCell.j);
+    });
+
     // --- 事件监听绑定 ---
+    document.getElementById("zeroMatrixBtn").addEventListener("click", zeroMatrix);
+    const quickZeroBtn = document.getElementById("quickZeroBtn");
+    if (quickZeroBtn) quickZeroBtn.addEventListener("click", zeroMatrix);
+    const randomMatrixBtn = document.getElementById("randomMatrixBtn");
+    if (randomMatrixBtn) randomMatrixBtn.addEventListener("click", randomizeMatrix);
+
+    document.getElementById("openFullscreenMatrixBtn").addEventListener("click", openMatrixModal);
+    const quickFullscreenMatrixBtn = document.getElementById("quickFullscreenMatrixBtn");
+    if (quickFullscreenMatrixBtn) quickFullscreenMatrixBtn.addEventListener("click", openMatrixModal);
+    document.getElementById("closeMatrixModalBtn").addEventListener("click", closeMatrixModal);
+    document.getElementById("modalConfirmBtn").addEventListener("click", closeMatrixModal);
+
     document.getElementById("addColorBtn").addEventListener("click", addColor);
     document.getElementById("delColorBtn").addEventListener("click", () => removeColor(null));
 
@@ -1848,6 +2460,18 @@
       cellColorCount = parseInt(e.target.value);
       document.getElementById("valCellColors").textContent = cellColorCount + " 种颜色";
     });
+
+    const paramInitCells = document.getElementById("paramInitCells");
+    const valInitCells = document.getElementById("valInitCells");
+    if (paramInitCells) {
+      paramInitCells.value = initialCellCount;
+      valInitCells.textContent = initialCellCount === 0 ? "0 (纯自由微粒)" : initialCellCount + " 个游动体";
+      paramInitCells.addEventListener("input", e => {
+        initialCellCount = parseInt(e.target.value);
+        valInitCells.textContent = initialCellCount === 0 ? "0 (纯自由微粒)" : initialCellCount + " 个游动体";
+        initParticles(true);
+      });
+    }
 
     const paramCount = document.getElementById("paramCount");
     const valCount = document.getElementById("valCount");
@@ -1891,6 +2515,28 @@
       });
     }
 
+    const paramTouchAttract = document.getElementById("paramTouchAttract");
+    const valTouchAttract = document.getElementById("valTouchAttract");
+    if (paramTouchAttract) {
+      paramTouchAttract.value = touchAttractStrength;
+      valTouchAttract.textContent = touchAttractStrength.toFixed(1) + "x";
+      paramTouchAttract.addEventListener("input", e => {
+        touchAttractStrength = parseFloat(e.target.value);
+        valTouchAttract.textContent = touchAttractStrength.toFixed(1) + "x";
+      });
+    }
+
+    const paramTouchRepel = document.getElementById("paramTouchRepel");
+    const valTouchRepel = document.getElementById("valTouchRepel");
+    if (paramTouchRepel) {
+      paramTouchRepel.value = touchRepelStrength;
+      valTouchRepel.textContent = touchRepelStrength.toFixed(1) + "x";
+      paramTouchRepel.addEventListener("input", e => {
+        touchRepelStrength = parseFloat(e.target.value);
+        valTouchRepel.textContent = touchRepelStrength.toFixed(1) + "x";
+      });
+    }
+
     const playPauseBtn = document.getElementById("playPauseBtn");
     playPauseBtn.addEventListener("click", () => {
       isPaused = !isPaused;
@@ -1901,7 +2547,7 @@
       initParticles(true);
     });
     document.getElementById("spawnCellBtn").addEventListener("click", () => {
-      injectProtozoanCell(width * 0.5 + (Math.random() - 0.5) * 200, height * 0.5 + (Math.random() - 0.5) * 200, 1.0, cellColorCount);
+      injectProtozoanCell(width * 0.5 + (Math.random() - 0.5) * 200, height * 0.5 + (Math.random() - 0.5) * 200, 1.0, cellColorCount, true);
     });
 
     const hud = document.getElementById("hud");
@@ -2009,11 +2655,20 @@
         e.preventDefault();
         playPauseBtn.click();
       } else if (e.key === "c" || e.key === "C") {
-        injectProtozoanCell(width * 0.5, height * 0.5, 1.0, cellColorCount);
+        injectProtozoanCell(width * 0.5, height * 0.5, 1.0, cellColorCount, true);
       } else if (e.key === "w" || e.key === "W") {
         wakeUpEnergyPulse();
       } else if (e.key === "r" || e.key === "R") {
         initParticles(true);
+      } else if (e.key === "z" || e.key === "Z") {
+        zeroMatrix();
+      } else if (e.key === "x" || e.key === "X") {
+        if (matrixModal && matrixModal.classList.contains("active")) closeMatrixModal();
+        else openMatrixModal();
+      } else if (e.key === "Escape") {
+        if (matrixModal && matrixModal.classList.contains("active")) {
+          closeMatrixModal();
+        }
       }
     });
 
@@ -2036,7 +2691,7 @@
       e.preventDefault();
     });
     canvas.addEventListener("dblclick", e => {
-      injectProtozoanCell(e.clientX, e.clientY, 1.0, cellColorCount);
+      injectProtozoanCell(e.clientX, e.clientY, 1.0, cellColorCount, true);
     });
 
     // 移动端触摸手势交互 (单指滑动吸引粒子，双指滑动排斥粒子，双击注入单细胞)
@@ -2048,7 +2703,7 @@
         const t = touches[0];
         const now = performance.now();
         if (now - lastTapTime < 320 && touches.length === 1) {
-          injectProtozoanCell(t.clientX, t.clientY, 1.0, cellColorCount);
+          injectProtozoanCell(t.clientX, t.clientY, 1.0, cellColorCount, true);
         }
         lastTapTime = now;
 
