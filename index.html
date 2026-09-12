@@ -618,6 +618,14 @@
       <input type="range" id="paramSpeed" min="0.1" max="2.5" step="0.1" value="1.0">
     </div>
 
+    <div class="control-group">
+      <div class="control-label">
+        <span>粒子高清大小 (Radius)</span>
+        <span class="control-val" id="valParticleRadius">2.8 px</span>
+      </div>
+      <input type="range" id="paramParticleRadius" min="1.5" max="6.0" step="0.1" value="2.8">
+    </div>
+
     <!-- 空间音乐与粒子声化控制 -->
     <div class="section-title">
       <span>🎵 空间音乐与粒子生乐</span>
@@ -1065,15 +1073,21 @@
 
     const audioEngine = new EmergenceAudioEngine();
 
-    // --- 画布初始化 ---
+    // --- 画布初始化与 Retina / iPhone 高分屏超清适配 ---
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d", { alpha: false });
+    let dpr = Math.min(window.devicePixelRatio || 1, 3);
+    let particleRadius = window.innerWidth < 600 ? 2.8 : 3.5;
 
     function resizeCanvas() {
       width = window.innerWidth;
       height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
+      dpr = Math.min(window.devicePixelRatio || 1, 3);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
@@ -1679,10 +1693,9 @@
 
     // --- 渲染引擎 ---
     function render() {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, width, height);
-
-      const particleRadius = 3.6;
 
       for (let t = 0; t < NUM_TYPES; t++) {
         const col = COLORS[t];
@@ -1814,6 +1827,16 @@
       timeScale = parseFloat(e.target.value);
       document.getElementById("valSpeed").textContent = timeScale.toFixed(1) + "x";
     });
+    const paramParticleRadius = document.getElementById("paramParticleRadius");
+    const valParticleRadius = document.getElementById("valParticleRadius");
+    if (paramParticleRadius) {
+      paramParticleRadius.value = particleRadius;
+      valParticleRadius.textContent = particleRadius.toFixed(1) + " px";
+      paramParticleRadius.addEventListener("input", e => {
+        particleRadius = parseFloat(e.target.value);
+        valParticleRadius.textContent = particleRadius.toFixed(1) + " px";
+      });
+    }
 
     const playPauseBtn = document.getElementById("playPauseBtn");
     playPauseBtn.addEventListener("click", () => {
