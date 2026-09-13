@@ -501,6 +501,74 @@
       box-shadow: 0 0 6px #ff9100;
     }
 
+    /* 陀螺仪分色重力列表样式 */
+    .color-gravity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 6px;
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 4px;
+      scrollbar-width: thin;
+    }
+    .color-gravity-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .color-gravity-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+    .color-gravity-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.035);
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: background 0.2s;
+    }
+    .color-gravity-item:hover {
+      background: rgba(255, 255, 255, 0.065);
+    }
+    .color-gravity-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      min-width: 58px;
+      font-weight: 500;
+      color: #e0e0e0;
+      flex-shrink: 0;
+    }
+    .color-gravity-slider {
+      flex: 1;
+      height: 4px;
+      margin: 0;
+      cursor: pointer;
+    }
+    .color-gravity-val {
+      font-family: monospace;
+      font-size: 10px;
+      min-width: 66px;
+      text-align: right;
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+    .val-sink {
+      color: #00e5ff;
+    }
+    .val-float {
+      color: #ffd426;
+    }
+    .val-rise {
+      color: #ff5252;
+    }
+    .val-zero {
+      color: #888;
+    }
+
     .tool-label-short {
       display: none;
     }
@@ -1296,6 +1364,25 @@
       <input type="range" id="paramGyroStrength" min="0.2" max="3.0" step="0.1" value="1.0">
     </div>
 
+    <!-- 陀螺仪物种差异重力 / 浮力分选系统 -->
+    <div class="control-group" style="margin-top: 6px; background: rgba(0, 229, 255, 0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(0, 229, 255, 0.1);">
+      <div class="control-label">
+        <span>🎨 各物种分色重力与浮力</span>
+        <span class="control-val" id="valColorGravityMode">细胞器沉降</span>
+      </div>
+      <div class="presets-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 6px;">
+        <button class="btn-preset active" data-grav-preset="organelle" title="核沉膜浮：紫核沉底(+1.8x)、黄膜中质(+1.0x)、青毛轻浮(+0.3x)、红粒上浮(-0.6x)">🔬 细胞器沉降</button>
+        <button class="btn-preset" data-grav-preset="buoyancy" title="正负浮力对流：冷暖色异向对流流动">🎈 浮力对流</button>
+        <button class="btn-preset" data-grav-preset="gradient" title="质量阶梯渐变：从重质递减至轻质/反向浮力">🌈 梯级渐变</button>
+        <button class="btn-preset" data-grav-preset="uniform" title="所有颜色物种受力等同(+1.0x)">⚖️ 均一重力</button>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; margin-bottom: 3px;">
+        <span style="font-size: 10px; color: #888;">各颜色独立重力微调（负数为反向上浮）</span>
+        <button class="btn-color-tool" id="resetColorGravBtn" style="padding: 2px 7px; font-size: 9.5px; width: auto;" title="恢复当前预设重力">🔄 恢复预设</button>
+      </div>
+      <div class="color-gravity-list" id="colorGravityList"></div>
+    </div>
+
     <!-- 空间音乐与粒子声化控制 -->
     <div class="section-title">
       <span>🎵 空间音乐与粒子生乐</span>
@@ -1381,7 +1468,7 @@
       生态演化: <span class="stats-highlight" id="statLifeText">守恒</span> | 新生: <span class="stats-highlight" id="statBirthDisplay" style="color: #00e676;">+0</span> | 凋亡: <span class="stats-highlight" id="statDeathDisplay" style="color: #ff9100;">-0</span>
     </div>
     <div id="statGyroRow" style="display: none;">
-      陀螺仪重力: <span class="stats-highlight" id="statGyroVals">X: +0.00 | Y: +0.00</span>
+      陀螺仪重力: <span class="stats-highlight" id="statGyroVals">X: +0.00 | Y: +0.00</span> | 分色: <span class="stats-highlight" id="statGyroColorText">细胞器沉降</span>
     </div>
   </div>
 
@@ -1439,7 +1526,7 @@
     let birthCount = 0;              // 累计新生数量
     let deathCount = 0;              // 累计凋亡数量
 
-    // --- 移动端陀螺仪重力微扰 ---
+    // --- 移动端陀螺仪重力微扰与物种分色重力 ---
     let gyroEnabled = false;         // 陀螺仪微扰开关
     let gyroStrength = 1.0;          // 陀螺仪重力强度乘数
     let gyroState = {
@@ -1452,6 +1539,32 @@
       lastBeta: 0,
       lastGamma: 0
     };
+
+    // 陀螺仪分色物种差异重力与浮力预设
+    const COLOR_GRAV_PRESETS = {
+      organelle: {
+        name: "细胞器沉降",
+        desc: "核沉膜浮：紫核沉底(+1.8x)、黄膜中质(+1.0x)、青毛轻浮(+0.3x)、红粒上浮(-0.6x)",
+        gravities: [1.8, 1.0, 0.3, 1.4, 0.7, -0.6, 1.2, 0.4, -0.4, 0.0, 1.6, -0.8]
+      },
+      buoyancy: {
+        name: "浮力对流",
+        desc: "正负浮力对流：偶数色下沉，奇数色反向上浮",
+        gravities: [1.6, -1.2, 1.3, -1.0, 1.0, -0.7, 0.8, -0.5, 0.6, -0.4, 1.4, -0.9]
+      },
+      gradient: {
+        name: "梯级渐变",
+        desc: "质量阶梯：从重质沉降(+2.2x)至反向浮力(-0.8x)",
+        gravities: [2.2, 1.7, 1.2, 0.8, 0.4, -0.2, -0.5, -0.8, 1.0, 0.5, 0.0, -0.5]
+      },
+      uniform: {
+        name: "均一重力",
+        desc: "统一标准重力：所有颜色受力均等(+1.0x)",
+        gravities: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      }
+    };
+    let currentColorGravPreset = "organelle";
+    let colorGravity = [...COLOR_GRAV_PRESETS.organelle.gravities];
 
     // 交互力矩阵 matrix[i][j] (动态尺寸 NUM_TYPES × NUM_TYPES)
     let matrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
@@ -2035,6 +2148,7 @@
         cellSlider.value = cellColorCount;
         document.getElementById("valCellColors").textContent = cellColorCount + " 种颜色";
       }
+      renderColorGravityList();
     }
 
     // 切换预设模式 (严格保持用户当前的颜色数量，不重置颜色数)
@@ -2469,13 +2583,14 @@
           }
         }
 
-        // 移动端陀螺仪倾斜重力微扰与晃动冲击波
+        // 移动端陀螺仪倾斜重力微扰与晃动冲击波 (支持各物种分色重力与反向浮力)
         if (gyroEnabled) {
-          const gForce = gyroStrength * 1.65 * fMult;
+          const cGrav = (colorGravity && colorGravity[t1] !== undefined) ? colorGravity[t1] : 1.0;
+          const gForce = gyroStrength * cGrav * 1.65 * fMult;
           fx += gyroState.smoothX * gForce;
           fy += gyroState.smoothY * gForce;
           if (gyroState.shakeWave > 0.01) {
-            const sw = gyroState.shakeWave * 3.2;
+            const sw = gyroState.shakeWave * 3.2 * (Math.abs(cGrav) > 0.1 ? Math.sqrt(Math.abs(cGrav)) : 0.6);
             fx += (Math.random() - 0.5) * sw;
             fy += (Math.random() - 0.5) * sw;
           }
@@ -2551,18 +2666,18 @@
     // --- 细胞生态演化动力学：繁殖与程序性凋亡 ---
     function updateLifeCycle(dt) {
       if (!reproductionEnabled && !apoptosisEnabled) return;
-      if (steps % 5 !== 0) return; // 每 5 帧周期性调度，兼顾生命涌现律动与极致流畅度
+      if (steps % 3 !== 0) return; // 节奏加速：每 3 帧调度一次，生命涌现更灵动鲜活
       if (particles.length === 0) return;
 
       const rate = lifeCycleRate;
       const rCheck = rMax * 0.72;
       const rCheck2 = rCheck * rCheck;
-      const maxPopCap = Math.max(3000, Math.floor(particleCount * 1.5));
-      const minPopFloor = 320;
+      const maxPopCap = Math.max(3600, Math.floor(particleCount * 1.8));
+      const minPopFloor = 360;
 
-      // 1. 细胞自主繁殖 (Reproduction / Mitosis)
+      // 1. 细胞自主繁殖 (Reproduction / Mitosis) —— 显著提速加速
       if (reproductionEnabled && particles.length < maxPopCap) {
-        const sampleCount = Math.min(65, Math.max(12, Math.floor(particles.length * 0.04 * rate)));
+        const sampleCount = Math.min(100, Math.max(24, Math.floor(particles.length * 0.08 * rate)));
         const newOffspring = [];
 
         for (let s = 0; s < sampleCount; s++) {
@@ -2594,21 +2709,22 @@
                 else if (dy < -height * 0.5) dy += height;
                 if (dx * dx + dy * dy < rCheck2) {
                   neighborCount++;
-                  if (neighborCount > 12) break;
+                  if (neighborCount > 14) break;
                 }
               }
-              if (neighborCount > 12) break;
+              if (neighborCount > 14) break;
             }
-            if (neighborCount > 12) break;
+            if (neighborCount > 14) break;
           }
 
-          // 黄金分裂密度区：群落内部/边缘健康度（3 ~ 9 个邻居微粒，未过度挤压且非孤立）
-          if (neighborCount >= 3 && neighborCount <= 9) {
-            const capFactor = Math.max(0.1, 1.0 - particles.length / maxPopCap);
-            const birthProb = 0.085 * rate * capFactor;
+          // 适宜分裂区间扩宽至 2 ~ 12 颗邻居微粒
+          if (neighborCount >= 2 && neighborCount <= 12) {
+            const ratio = particles.length / maxPopCap;
+            const capFactor = Math.max(0.25, 1.0 - ratio * ratio);
+            const birthProb = 0.24 * rate * capFactor; // 繁殖基础概率提升约 3 倍
             if (Math.random() < birthProb) {
               const angle = Math.random() * Math.PI * 2;
-              const dist = 5 + Math.random() * 8;
+              const dist = 4 + Math.random() * 8;
               const childX = (p.x + Math.cos(angle) * dist + width) % width;
               const childY = (p.y + Math.sin(angle) * dist + height) % height;
 
@@ -2617,7 +2733,7 @@
                 childType = (p.type + 1 + Math.floor(Math.random() * (NUM_TYPES - 1))) % NUM_TYPES;
               }
 
-              const splitForce = 0.75;
+              const splitForce = 0.70;
               p.vx += Math.cos(angle) * splitForce;
               p.vy += Math.sin(angle) * splitForce;
 
@@ -2630,7 +2746,7 @@
               });
 
               birthCount++;
-              if (typeof audioEngine !== "undefined" && audioEngine.isEnabled && Math.random() < 0.22) {
+              if (typeof audioEngine !== "undefined" && audioEngine.isEnabled && Math.random() < 0.20) {
                 audioEngine.playParticleTone(childType, 1.5, childX, childY);
               }
 
@@ -2644,9 +2760,10 @@
         }
       }
 
-      // 2. 细胞程序性凋亡 (Apoptosis / Programmed Cell Death)
+      // 2. 细胞程序性凋亡 (Apoptosis / Programmed Cell Death) —— 显著放慢放缓
       if (apoptosisEnabled && particles.length > minPopFloor) {
-        const sampleCount = Math.min(65, Math.max(12, Math.floor(particles.length * 0.04 * rate)));
+        // 采样量收敛减半，避免对健康种群过度剥夺
+        const sampleCount = Math.min(36, Math.max(8, Math.floor(particles.length * 0.02 * rate)));
         const deadIndices = new Set();
 
         for (let s = 0; s < sampleCount; s++) {
@@ -2679,21 +2796,21 @@
                 else if (dy < -height * 0.5) dy += height;
                 if (dx * dx + dy * dy < rCheck2) {
                   neighborCount++;
-                  if (neighborCount > 18) break;
+                  if (neighborCount > 20) break;
                 }
               }
-              if (neighborCount > 18) break;
+              if (neighborCount > 20) break;
             }
-            if (neighborCount > 18) break;
+            if (neighborCount > 20) break;
           }
 
           let dieProb = 0;
-          // 条件一：过度挤压窒息 (neighborCount >= 15)
-          if (neighborCount >= 15) dieProb = 0.12 * rate;
-          // 条件二：孤立枯竭 (neighborCount === 0)
-          else if (neighborCount === 0) dieProb = 0.045 * rate;
-          // 条件三：超出基准粒子数时的自稳代谢
-          else if (particles.length > particleCount) dieProb = 0.025 * rate;
+          // 条件一：极端拥挤死结 (阈值提升至 >= 18，仅清退核心死结；概率降至 0.035，慢 3.5 倍)
+          if (neighborCount >= 18) dieProb = 0.035 * rate;
+          // 条件二：完全孤立 (概率降至 0.012，慢 3.8 倍)
+          else if (neighborCount === 0) dieProb = 0.012 * rate;
+          // 条件三：接近上限时的温和微调
+          else if (particles.length > maxPopCap * 0.9) dieProb = 0.010 * rate;
 
           if (dieProb > 0 && Math.random() < dieProb) {
             deadIndices.add(idx);
@@ -2804,12 +2921,17 @@
     function updateGyroStatsUI() {
       const statGyroRow = document.getElementById("statGyroRow");
       const statGyroVals = document.getElementById("statGyroVals");
+      const statGyroColorText = document.getElementById("statGyroColorText");
       if (statGyroRow && statGyroVals) {
         if (gyroEnabled) {
           statGyroRow.style.display = "block";
           const signX = gyroState.smoothX >= 0 ? "+" : "";
           const signY = gyroState.smoothY >= 0 ? "+" : "";
           statGyroVals.textContent = `X: ${signX}${gyroState.smoothX.toFixed(2)} | Y: ${signY}${gyroState.smoothY.toFixed(2)}`;
+          if (statGyroColorText) {
+            const pName = COLOR_GRAV_PRESETS[currentColorGravPreset] ? COLOR_GRAV_PRESETS[currentColorGravPreset].name : "自定义微调";
+            statGyroColorText.textContent = pName;
+          }
         } else {
           statGyroRow.style.display = "none";
         }
@@ -2869,6 +2991,105 @@
           if (topTextShort) topTextShort.textContent = "陀螺: 关";
         }
       }
+    }
+
+    // --- 陀螺仪物种分色重力与浮力管理系统 ---
+    function renderColorGravityList() {
+      const container = document.getElementById("colorGravityList");
+      if (!container) return;
+
+      let html = "";
+      for (let i = 0; i < NUM_TYPES; i++) {
+        const c = COLORS[i];
+        if (!c) continue;
+        const gVal = (colorGravity[i] !== undefined) ? colorGravity[i] : 1.0;
+
+        let tagText = "";
+        let tagClass = "";
+        if (gVal >= 1.1) {
+          tagText = `⬇️ 沉 +${gVal.toFixed(1)}x`;
+          tagClass = "val-sink";
+        } else if (gVal > 0) {
+          tagText = `🫧 漂 +${gVal.toFixed(1)}x`;
+          tagClass = "val-float";
+        } else if (gVal < 0) {
+          tagText = `⬆️ 升 ${gVal.toFixed(1)}x`;
+          tagClass = "val-rise";
+        } else {
+          tagText = `⭕ 零 0.0x`;
+          tagClass = "val-zero";
+        }
+
+        html += `
+          <div class="color-gravity-item">
+            <div class="color-gravity-badge">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${c.hex}; flex-shrink: 0;"></span>
+              <span>${c.name}</span>
+            </div>
+            <input type="range" class="color-gravity-slider" data-color-idx="${i}" min="-1.5" max="2.5" step="0.1" value="${gVal.toFixed(1)}">
+            <div class="color-gravity-val ${tagClass}" id="colorGravVal_${i}">${tagText}</div>
+          </div>
+        `;
+      }
+      container.innerHTML = html;
+
+      // 绑定每个颜色的滑动调节
+      container.querySelectorAll(".color-gravity-slider").forEach(slider => {
+        slider.addEventListener("input", e => {
+          const idx = parseInt(slider.getAttribute("data-color-idx"));
+          const val = parseFloat(e.target.value);
+          colorGravity[idx] = val;
+
+          // 更新单个标签显示
+          const valEl = document.getElementById("colorGravVal_" + idx);
+          if (valEl) {
+            valEl.className = "color-gravity-val";
+            if (val >= 1.1) {
+              valEl.textContent = `⬇️ 沉 +${val.toFixed(1)}x`;
+              valEl.classList.add("val-sink");
+            } else if (val > 0) {
+              valEl.textContent = `🫧 漂 +${val.toFixed(1)}x`;
+              valEl.classList.add("val-float");
+            } else if (val < 0) {
+              valEl.textContent = `⬆️ 升 ${val.toFixed(1)}x`;
+              valEl.classList.add("val-rise");
+            } else {
+              valEl.textContent = `⭕ 零 0.0x`;
+              valEl.classList.add("val-zero");
+            }
+          }
+
+          currentColorGravPreset = "custom";
+          document.querySelectorAll("[data-grav-preset]").forEach(btn => btn.classList.remove("active"));
+          const modeVal = document.getElementById("valColorGravityMode");
+          if (modeVal) modeVal.textContent = "自定义微调";
+          updateGyroStatsUI();
+        });
+      });
+    }
+
+    function applyColorGravPreset(presetKey) {
+      currentColorGravPreset = presetKey;
+      const p = COLOR_GRAV_PRESETS[presetKey];
+      if (!p) return;
+
+      for (let i = 0; i < FULL_PALETTE.length; i++) {
+        colorGravity[i] = p.gravities[i] !== undefined ? p.gravities[i] : 1.0;
+      }
+
+      document.querySelectorAll("[data-grav-preset]").forEach(btn => {
+        if (btn.getAttribute("data-grav-preset") === presetKey) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+
+      const modeVal = document.getElementById("valColorGravityMode");
+      if (modeVal) modeVal.textContent = p.name;
+
+      renderColorGravityList();
+      updateGyroStatsUI();
     }
 
     // --- 渲染引擎 ---
@@ -3147,9 +3368,9 @@
     document.getElementById("addColorBtn").addEventListener("click", addColor);
     document.getElementById("delColorBtn").addEventListener("click", () => removeColor(null));
 
-    document.querySelectorAll(".btn-preset").forEach(btn => {
+    document.querySelectorAll(".btn-preset[data-preset]").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".btn-preset[data-preset]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         applyPreset(btn.getAttribute("data-preset"));
       });
@@ -3288,6 +3509,21 @@
       paramGyroStrength.addEventListener("input", e => {
         gyroStrength = parseFloat(e.target.value);
         if (valGyroStrength) valGyroStrength.textContent = gyroStrength.toFixed(1) + "x";
+      });
+    }
+
+    // 陀螺仪分色重力与浮力预设按钮绑定
+    document.querySelectorAll("[data-grav-preset]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-grav-preset");
+        applyColorGravPreset(key);
+      });
+    });
+
+    const resetColorGravBtn = document.getElementById("resetColorGravBtn");
+    if (resetColorGravBtn) {
+      resetColorGravBtn.addEventListener("click", () => {
+        applyColorGravPreset(currentColorGravPreset === "custom" ? "organelle" : currentColorGravPreset);
       });
     }
 
@@ -3517,6 +3753,7 @@
 
     // 启动系统
     updateColorUI();
+    applyColorGravPreset("organelle");
     applyPreset("protozoan");
     requestAnimationFrame(loop);
   </script>
