@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="粒子生命">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#000000">
   <title>群鸟算法与涌现：单细胞生命模拟器 (Particle Life)</title>
   <style>
     * {
@@ -14,20 +19,37 @@
       -webkit-touch-callout: none;
     }
     body, html {
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
+      height: 100dvh;
       overflow: hidden;
+      overscroll-behavior: none;
+      overscroll-behavior-y: none;
+      touch-action: none;
       background-color: #000000;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
       color: #e0e0e0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    :fullscreen, :-webkit-full-screen {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
     }
     #canvas {
       display: block;
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
       background: #000000;
       cursor: crosshair;
       touch-action: none; /* 彻底禁用默认双指缩放和滚动，确保丝滑触摸划动粒子 */
+      overscroll-behavior: none;
     }
 
     /* 沉浸式浮动控制面板 (玻璃拟态 Glassmorphism) */
@@ -95,7 +117,59 @@
       font-size: 11px;
       line-height: 1.5;
       color: #9aa0a6;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
+    }
+
+    /* HUD 现代化分类标签栏 (多行自适应网格，所有 Tab 一览无余) */
+    .hud-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .hud-tab-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 9px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      color: #b0b8c4;
+      font-size: 11.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+      flex: 1 1 calc(33.333% - 6px);
+      min-width: 82px;
+      text-align: center;
+    }
+    .hud-tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .hud-tab-btn.active {
+      color: #00e5ff;
+      background: rgba(0, 229, 255, 0.18);
+      border-color: #00e5ff;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+      font-weight: 600;
+    }
+    .hud-tab-panel {
+      display: none;
+      animation: fadeInTab 0.2s ease-out;
+    }
+    .hud-tab-panel.active {
+      display: block;
+    }
+    @keyframes fadeInTab {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .section-title {
@@ -326,6 +400,104 @@
       color: #ff8a80;
     }
 
+    /* 食物链拓扑编辑器与捕食矩阵 */
+    .food-chain-editor-box {
+      margin-top: 8px;
+      margin-bottom: 12px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(0, 229, 255, 0.22);
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.4);
+    }
+    .food-chain-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 7px;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .fc-header-left {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .fc-quick-tools {
+      display: flex;
+      gap: 4px;
+    }
+    .btn-fc-tool {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 4px;
+      color: #cfd8dc;
+      padding: 3px 6px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-fc-tool:hover {
+      background: rgba(0, 229, 255, 0.2);
+      border-color: #00e5ff;
+      color: #fff;
+    }
+    .food-chain-table-wrap {
+      overflow-x: auto;
+      margin-bottom: 6px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 6px;
+      padding: 4px;
+    }
+    .food-chain-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    .food-chain-table th, .food-chain-table td {
+      height: 25px;
+      text-align: center;
+      font-size: 10px;
+      font-family: monospace;
+      padding: 1px;
+    }
+    .food-chain-table th {
+      font-weight: 600;
+    }
+    .fc-cell {
+      border-radius: 3px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+    }
+    .fc-cell:hover:not(.fc-cell-self) {
+      transform: scale(1.15);
+      z-index: 2;
+      filter: brightness(1.25);
+    }
+    .fc-cell.active {
+      font-weight: bold;
+      box-shadow: 0 0 6px rgba(0, 230, 118, 0.35);
+    }
+    .fc-cell-self {
+      background: rgba(255, 255, 255, 0.02) !important;
+      color: #444 !important;
+      border: 1px solid rgba(255, 255, 255, 0.04) !important;
+      cursor: not-allowed;
+    }
+    .food-chain-summary {
+      font-size: 10px;
+      padding: 4px 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+
     /* 底部操作工具栏 */
     .actions-row {
       display: flex;
@@ -407,6 +579,49 @@
       background: rgba(0, 229, 255, 0.22);
       color: #00e5ff;
       box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
+    }
+    .tool-pill.fullscreen-active {
+      border-color: #00e5ff;
+      background: rgba(0, 229, 255, 0.24);
+      color: #00e5ff;
+      box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
+    }
+
+    /* 全屏误退快速自愈悬浮胶囊 (iOS 专用优雅快速恢复) */
+    .fullscreen-restore-pill {
+      position: fixed;
+      bottom: max(22px, env(safe-area-inset-bottom, 22px));
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: rgba(16, 16, 24, 0.94);
+      border: 1px solid rgba(0, 229, 255, 0.55);
+      color: #00e5ff;
+      padding: 9px 18px;
+      border-radius: 26px;
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 0 0 16px rgba(0, 229, 255, 0.35);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 200;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .fullscreen-restore-pill.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .fullscreen-restore-pill:hover, .fullscreen-restore-pill:active {
+      background: rgba(0, 229, 255, 0.22);
+      border-color: #00e5ff;
+      transform: translateX(-50%) translateY(-2px);
     }
 
     /* 现代化微型开关组件 (Toggle Switch) */
@@ -1110,11 +1325,17 @@
       <span class="tool-label-full">注入游动单细胞 (C)</span>
       <span class="tool-label-short">注入</span>
     </div>
-    <div class="tool-pill" id="fullscreenBtn" title="全屏沉浸演示">
-      <span>⛶</span>
-      <span class="tool-label-full">全屏模式</span>
-      <span class="tool-label-short">全屏</span>
+    <div class="tool-pill" id="fullscreenBtn" title="全屏沉浸演示 (iOS防误退保护已启用)">
+      <span id="fullscreenIcon">⛶</span>
+      <span class="tool-label-full" id="fullscreenText">全屏模式</span>
+      <span class="tool-label-short" id="fullscreenTextShort">全屏</span>
     </div>
+  </div>
+
+  <!-- iOS 全屏误退快速自愈悬浮胶囊 -->
+  <div class="fullscreen-restore-pill" id="fullscreenRestorePill" title="轻触一键重返全屏">
+    <span>⛶</span>
+    <span>已退出全屏 · 轻触一键恢复</span>
   </div>
 
   <!-- 全屏沉浸式矩阵编辑器模态窗 -->
@@ -1181,275 +1402,387 @@
       视频《群鸟算法的魔术与涌现》末尾展示的活性物质粒子系统（Active Matter Particle Life）。生命持续游弋的核心在于<b>非对称相互作用力（打破牛顿第三定律）</b>与活性扰动，源源不断向系统注入动能，绝不陷入死锁定格。
     </p>
 
-    <!-- 颜色物种动态增删控制 -->
-    <div class="section-title">
-      <span>🎨 颜色物种管理</span>
-      <span style="font-size: 10px; color: #888;" id="colorCountText">6 种颜色</span>
-    </div>
-    <div class="color-tags-container" id="colorTagsContainer"></div>
-    <div class="color-actions-row">
-      <button class="btn-color-tool" id="addColorBtn">
-        <span>➕</span> 添加颜色
+    <!-- 分类标签导航栏 (Tab Navigation Bar) -->
+    <div class="hud-tabs" id="hudTabs">
+      <button class="hud-tab-btn active" data-tab="tab-ecology">
+        <span>🌱</span> 生态捕食
       </button>
-      <button class="btn-color-tool" id="delColorBtn">
-        <span>➖</span> 移除末尾
+      <button class="hud-tab-btn" data-tab="tab-species">
+        <span>🧬</span> 物种矩阵
       </button>
-    </div>
-
-    <div class="section-title">🌟 典型生命形态预设</div>
-    <div class="presets-grid">
-      <button class="btn-preset active" data-preset="protozoan">
-        <span>🔬</span> 视频原版游动单细胞
+      <button class="hud-tab-btn" data-tab="tab-physics">
+        <span>⚙️</span> 环境物理
       </button>
-      <button class="btn-preset" data-preset="flagellate">
-        <span>🦠</span> 游动变形鞭毛虫
+      <button class="hud-tab-btn" data-tab="tab-gyro">
+        <span>🧭</span> 陀螺重力
       </button>
-      <button class="btn-preset" data-preset="mitosis">
-        <span>🧬</span> 细胞分裂与繁殖
-      </button>
-      <button class="btn-preset" data-preset="primordial">
-        <span>🌌</span> 原生星云与网状
-      </button>
-      <button class="btn-preset" data-preset="colony">
-        <span>🧫</span> 多细胞共生菌群
-      </button>
-      <button class="btn-preset" data-preset="random">
-        <span>🎲</span> 随机演化探索
+      <button class="hud-tab-btn" data-tab="tab-audio">
+        <span>🎵</span> 空间音乐
       </button>
     </div>
 
-    <!-- 生命演化动力学 (繁殖与凋亡) -->
-    <div class="section-title">
-      <span>🧬 生命生态与周期 (繁殖与凋亡)</span>
-      <span style="font-size: 10px; color: #888;" id="lifeCycleStatusBadge">● 经典守恒 (OFF)</span>
-    </div>
-    <div class="control-toggle-row">
-      <div class="toggle-info">
-        <span class="toggle-title">🌱 细胞自主繁殖 (Reproduction / Mitosis)</span>
-        <span class="toggle-desc">处于适宜密度时发生有丝分裂产生后代 (B)</span>
-      </div>
-      <label class="switch switch-green">
-        <input type="checkbox" id="toggleReproduction">
-        <span class="slider-toggle"></span>
-      </label>
-    </div>
-    <div class="control-toggle-row">
-      <div class="toggle-info">
-        <span class="toggle-title">🍂 细胞程序性凋亡 (Apoptosis / Decay)</span>
-        <span class="toggle-desc">过度拥挤窒息或孤立停滞的微粒自然代谢消亡 (D)</span>
-      </div>
-      <label class="switch switch-orange">
-        <input type="checkbox" id="toggleApoptosis">
-        <span class="slider-toggle"></span>
-      </label>
-    </div>
-    <div class="control-group" style="margin-top: 8px;">
-      <div class="control-label">
-        <span>生命演化速率 (Cycle Rate)</span>
-        <span class="control-val" id="valLifeCycleRate">1.0x</span>
-      </div>
-      <input type="range" id="paramLifeCycleRate" min="0.2" max="3.0" step="0.1" value="1.0">
-    </div>
-    <div style="font-size: 10px; color: #888; font-family: monospace; display: flex; justify-content: space-between; padding: 4px 0 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); margin-bottom: 6px;">
-      <span>累计新生: <b id="hudBirthCount" style="color: #00e676;">+0</b></span>
-      <span>累计凋亡: <b id="hudDeathCount" style="color: #ff9100;">-0</b></span>
-      <span>实时存活: <b id="hudLiveCount" style="color: #00e5ff;">2400</b></span>
-    </div>
-
-    <div class="section-title">⚙️ 物理与动态环境参数</div>
-    <div class="control-group">
-      <div class="control-label">
-        <span>注入单细胞颜色数</span>
-        <span class="control-val" id="valCellColors">6 种颜色</span>
-      </div>
-      <input type="range" id="paramCellColors" min="2" max="6" step="1" value="6">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>初始单细胞数量</span>
-        <span class="control-val" id="valInitCells">3 个游动体</span>
-      </div>
-      <input type="range" id="paramInitCells" min="0" max="8" step="1" value="3">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>粒子总数</span>
-        <span class="control-val" id="valCount">2400</span>
-      </div>
-      <input type="range" id="paramCount" min="600" max="4000" step="100" value="2400">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>最大交互半径 (r_max)</span>
-        <span class="control-val" id="valRMax">92 px</span>
-      </div>
-      <input type="range" id="paramRMax" min="40" max="150" step="2" value="92">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>流体粘滞阻力 (Friction)</span>
-        <span class="control-val" id="valFriction">0.065</span>
-      </div>
-      <input type="range" id="paramFriction" min="0.01" max="0.20" step="0.005" value="0.065">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>活性布朗微扰 (打破死态停滞)</span>
-        <span class="control-val" id="valJitter">0.12</span>
-      </div>
-      <input type="range" id="paramJitter" min="0.0" max="0.6" step="0.02" value="0.12">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>交互力全局强度</span>
-        <span class="control-val" id="valForce">1.0</span>
-      </div>
-      <input type="range" id="paramForce" min="0.2" max="2.5" step="0.1" value="1.0">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>演化时间流速</span>
-        <span class="control-val" id="valSpeed">1.0x</span>
-      </div>
-      <input type="range" id="paramSpeed" min="0.1" max="2.5" step="0.1" value="1.0">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>粒子高清大小 (Radius)</span>
-        <span class="control-val" id="valParticleRadius">2.8 px</span>
-      </div>
-      <input type="range" id="paramParticleRadius" min="1.5" max="6.0" step="0.1" value="2.8">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>触摸吸引力 (Attract Force)</span>
-        <span class="control-val" id="valTouchAttract">1.2x</span>
-      </div>
-      <input type="range" id="paramTouchAttract" min="0.2" max="3.5" step="0.1" value="1.2">
-    </div>
-
-    <div class="control-group">
-      <div class="control-label">
-        <span>触摸排斥力 (Repel Force)</span>
-        <span class="control-val" id="valTouchRepel">1.8x</span>
-      </div>
-      <input type="range" id="paramTouchRepel" min="0.2" max="4.0" step="0.1" value="1.8">
-    </div>
-
-    <!-- 移动端陀螺仪重力微扰 -->
-    <div class="control-toggle-row" style="margin-top: 6px;">
-      <div class="toggle-info">
-        <span class="toggle-title">📱 移动端陀螺仪重力微扰 (Gyroscope Tilt)</span>
-        <span class="toggle-desc">倾斜手机像培养皿般滑动粒子，晃动产生流体微扰波 (G)</span>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="toggleGyro">
-        <span class="slider-toggle"></span>
-      </label>
-    </div>
-    <div class="control-group" style="margin-top: 4px;">
-      <div class="control-label">
-        <span>陀螺仪重力感应强度 (Tilt Force)</span>
-        <span class="control-val" id="valGyroStrength">1.0x</span>
-      </div>
-      <input type="range" id="paramGyroStrength" min="0.2" max="3.0" step="0.1" value="1.0">
-    </div>
-
-    <!-- 陀螺仪物种差异重力 / 浮力分选系统 -->
-    <div class="control-group" style="margin-top: 6px; background: rgba(0, 229, 255, 0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(0, 229, 255, 0.1);">
-      <div class="control-label">
-        <span>🎨 各物种分色重力与浮力</span>
-        <span class="control-val" id="valColorGravityMode">细胞器沉降</span>
-      </div>
-      <div class="presets-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 6px;">
-        <button class="btn-preset active" data-grav-preset="organelle" title="核沉膜浮：紫核沉底(+1.8x)、黄膜中质(+1.0x)、青毛轻浮(+0.3x)、红粒上浮(-0.6x)">🔬 细胞器沉降</button>
-        <button class="btn-preset" data-grav-preset="buoyancy" title="正负浮力对流：冷暖色异向对流流动">🎈 浮力对流</button>
-        <button class="btn-preset" data-grav-preset="gradient" title="质量阶梯渐变：从重质递减至轻质/反向浮力">🌈 梯级渐变</button>
-        <button class="btn-preset" data-grav-preset="uniform" title="所有颜色物种受力等同(+1.0x)">⚖️ 均一重力</button>
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; margin-bottom: 3px;">
-        <span style="font-size: 10px; color: #888;">各颜色独立重力微调（负数为反向上浮）</span>
-        <button class="btn-color-tool" id="resetColorGravBtn" style="padding: 2px 7px; font-size: 9.5px; width: auto;" title="恢复当前预设重力">🔄 恢复预设</button>
-      </div>
-      <div class="color-gravity-list" id="colorGravityList"></div>
-    </div>
-
-    <!-- 空间音乐与粒子声化控制 -->
-    <div class="section-title">
-      <span>🎵 空间音乐与粒子生乐</span>
-      <span style="font-size: 10px; color: #ff5252;" id="audioStatusBadge">● 已静音 (OFF)</span>
-    </div>
-    <div class="control-group">
-      <button class="btn-preset" id="hudAudioToggleBtn" style="width: 100%; justify-content: center; background: rgba(0, 229, 255, 0.1); border-color: rgba(0, 229, 255, 0.4);">
-        <span id="hudAudioIcon">🔈</span> <span id="hudAudioText">点击开启 粒子音乐与背景声 (M)</span>
-      </button>
-    </div>
-    <div class="control-group">
-      <div class="control-label">
-        <span>背景流动和弦音量 (Ambient Swells)</span>
-        <span class="control-val" id="valAmbientVol">40%</span>
-      </div>
-      <input type="range" id="paramAmbientVol" min="0" max="1" step="0.02" value="0.40">
-    </div>
-    <div class="control-group">
-      <div class="control-label">
-        <span>粒子运动电子音量 (Motion Synth)</span>
-        <span class="control-val" id="valParticleVol">55%</span>
-      </div>
-      <input type="range" id="paramParticleVol" min="0" max="1" step="0.02" value="0.55">
-    </div>
-    <div class="control-group">
-      <div class="control-label">
-        <span>音色清透度 (低音滤除 Cutoff)</span>
-        <span class="control-val" id="valBassCut">240 Hz</span>
-      </div>
-      <input type="range" id="paramBassCut" min="80" max="500" step="10" value="240">
-    </div>
-    <div class="control-group">
-      <div class="control-label">
-        <span>音阶调式 (Musical Scale)</span>
-      </div>
-      <div class="presets-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
-        <button class="btn-preset active" data-scale="pentatonic">🌌 空灵五度</button>
-        <button class="btn-preset" data-scale="crystal">💎 水晶八音盒</button>
-        <button class="btn-preset" data-scale="celestial">✨ 星空利底亚</button>
-        <button class="btn-preset" data-scale="zen">🎋 禅意风铃</button>
-      </div>
-    </div>
-
-    <div class="section-title">
-      <span>📊 相互作用力矩阵 (实时微调)</span>
-      <div style="display: flex; gap: 5px;">
-        <button class="btn-color-tool" id="quickFullscreenMatrixBtn" style="padding: 2px 8px; font-size: 10px; width: auto;" title="全屏沉浸矩阵编辑器">
-          <span>⛶</span> 全屏编辑
+    <!-- ==================== Tab 1: 生态与捕食 ==================== -->
+    <div class="hud-tab-panel active" id="tab-ecology">
+      <div class="section-title">🌟 典型生命形态预设</div>
+      <div class="presets-grid">
+        <button class="btn-preset active" data-preset="protozoan">
+          <span>🔬</span> 视频原版游动单细胞
         </button>
-        <button class="btn-color-tool" id="quickZeroBtn" style="padding: 2px 8px; font-size: 10px; width: auto;" title="清空全部相互作用力（全部归零）">
+        <button class="btn-preset" data-preset="flagellate">
+          <span>🦠</span> 游动变形鞭毛虫
+        </button>
+        <button class="btn-preset" data-preset="mitosis">
+          <span>🧬</span> 细胞分裂与繁殖
+        </button>
+        <button class="btn-preset" data-preset="primordial">
+          <span>🌌</span> 原生星云与网状
+        </button>
+        <button class="btn-preset" data-preset="colony">
+          <span>🧫</span> 多细胞共生菌群
+        </button>
+        <button class="btn-preset" data-preset="random">
+          <span>🎲</span> 随机演化探索
+        </button>
+      </div>
+
+      <!-- 生物链与捕食吞噬系统 -->
+      <div class="section-title">
+        <span>🥩 生物链与捕食吞噬 (Predation & Growth)</span>
+        <span style="font-size: 10px; color: #888;" id="predationStatusBadge">● 已关闭 (OFF)</span>
+      </div>
+      <div class="control-toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">🦈 开启食物链捕食 (Predator-Prey)</span>
+          <span class="toggle-desc">物种间相互猎食，吞噬猎物吸收能量并迅速变大 (E)</span>
+        </div>
+        <label class="switch switch-green">
+          <input type="checkbox" id="togglePredation">
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+      <div class="control-group" style="margin-top: 6px;">
+        <div class="control-label">
+          <span>食物链法则 (Trophic Rule)</span>
+          <span class="control-val" id="valPredationMode">环形闭环</span>
+        </div>
+        <div class="presets-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 6px;">
+          <button class="btn-preset active" data-pred-mode="cyclic" title="循环相生相克：紫吃黄，黄吃青，青吃绿，绿吃粉，粉吃红，红吃紫闭环">🌀 环形闭环</button>
+          <button class="btn-preset" data-pred-mode="apex" title="顶层阶梯：高阶物种捕食低阶物种（紫核为顶级掠食者）">👑 阶梯掠食</button>
+          <button class="btn-preset" data-pred-mode="sized" title="体型通吃：体型大者捕食体型小者（大鱼吃小鱼）">🐟 大小通吃</button>
+          <button class="btn-preset" data-pred-mode="custom" title="自由食物网：自主编辑物种捕食矩阵与食物链拓扑">🕸️ 自由食物网</button>
+        </div>
+      </div>
+
+      <!-- 食物链拓扑编辑与捕食矩阵 -->
+      <div class="food-chain-editor-box" id="foodChainEditorBox">
+        <div class="food-chain-header">
+          <div class="fc-header-left">
+            <span style="font-weight: 600; color: #00e5ff; font-size: 11px;">🕸️ 食物链拓扑编辑</span>
+            <span style="font-size: 9.5px; color: #888;">(行=捕食者 🦈 | 列=猎物 🎯)</span>
+          </div>
+          <div class="fc-quick-tools">
+            <button class="btn-fc-tool" id="fcPresetAll" title="全员猎食：全部异类物种相互猎食">⚔️ 全食</button>
+            <button class="btn-fc-tool" id="fcPresetReverse" title="反转食物链方向">🔄 反转</button>
+            <button class="btn-fc-tool" id="fcPresetRandom" title="随机生成食物网拓扑">🎲 随机</button>
+            <button class="btn-fc-tool" id="fcPresetClear" title="清空全部捕食关系（和平状态）">⭕ 置零</button>
+          </div>
+        </div>
+        <div class="food-chain-table-wrap">
+          <table class="food-chain-table" id="foodChainTable"></table>
+        </div>
+        <div class="food-chain-summary" id="foodChainSummary">
+          <span style="color: #888;">拓扑链条: </span>
+          <span id="foodChainSummaryText" style="color: #00e676; font-weight: 500;">紫 ➔ 黄 ➔ 青 ➔ 绿 ➔ 粉 ➔ 红 ➔ (闭环)</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <div class="control-label">
+          <span>吞噬生长增量 (Growth Rate)</span>
+          <span class="control-val" id="valPredationGrowth">1.4x</span>
+        </div>
+        <input type="range" id="paramPredationGrowth" min="0.4" max="3.0" step="0.1" value="1.4">
+      </div>
+      <div class="control-group">
+        <div class="control-label">
+          <span>最大巨化体型 (Max Size)</span>
+          <span class="control-val" id="valPredationMaxSize">2.6x</span>
+        </div>
+        <input type="range" id="paramPredationMaxSize" min="1.4" max="4.0" step="0.1" value="2.6">
+      </div>
+      <div class="control-toggle-row" style="margin-top: 4px;">
+        <div class="toggle-info">
+          <span class="toggle-title">💥 巨化饱食分裂 (Satiety Mitosis)</span>
+          <span class="toggle-desc">粒子吞噬长大至临界极值后分裂繁殖出同类子细胞</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleSatietySplit" checked>
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+      <div style="font-size: 10px; color: #888; font-family: monospace; display: flex; justify-content: space-between; padding: 4px 0 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); margin-bottom: 6px;">
+        <span>累计吞噬: <b id="hudPredationCount" style="color: #ff5252;">0</b> 次</span>
+        <span>最大霸主: <b id="hudMaxPredatorSize" style="color: #00e5ff;">1.0x</b></span>
+      </div>
+
+      <!-- 生命演化动力学 (繁殖与凋亡) -->
+      <div class="section-title">
+        <span>🧬 生命生态与周期 (繁殖与凋亡)</span>
+        <span style="font-size: 10px; color: #888;" id="lifeCycleStatusBadge">● 经典守恒 (OFF)</span>
+      </div>
+      <div class="control-toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">🌱 细胞自主繁殖 (Reproduction / Mitosis)</span>
+          <span class="toggle-desc">处于适宜密度时发生有丝分裂产生后代 (B)</span>
+        </div>
+        <label class="switch switch-green">
+          <input type="checkbox" id="toggleReproduction">
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+      <div class="control-toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">🍂 细胞程序性凋亡 (Apoptosis / Decay)</span>
+          <span class="toggle-desc">过度拥挤窒息或孤立停滞的微粒自然代谢消亡 (D)</span>
+        </div>
+        <label class="switch switch-orange">
+          <input type="checkbox" id="toggleApoptosis">
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+      <div class="control-group" style="margin-top: 8px;">
+        <div class="control-label">
+          <span>生命演化速率 (Cycle Rate)</span>
+          <span class="control-val" id="valLifeCycleRate">1.0x</span>
+        </div>
+        <input type="range" id="paramLifeCycleRate" min="0.2" max="3.0" step="0.1" value="1.0">
+      </div>
+      <div style="font-size: 10px; color: #888; font-family: monospace; display: flex; justify-content: space-between; padding: 4px 0 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); margin-bottom: 6px;">
+        <span>累计新生: <b id="hudBirthCount" style="color: #00e676;">+0</b></span>
+        <span>累计凋亡: <b id="hudDeathCount" style="color: #ff9100;">-0</b></span>
+        <span>实时存活: <b id="hudLiveCount" style="color: #00e5ff;">2400</b></span>
+      </div>
+    </div>
+
+    <!-- ==================== Tab 2: 物种与矩阵 ==================== -->
+    <div class="hud-tab-panel" id="tab-species">
+      <div class="section-title">
+        <span>🎨 颜色物种管理</span>
+        <span style="font-size: 10px; color: #888;" id="colorCountText">6 种颜色</span>
+      </div>
+      <div class="color-tags-container" id="colorTagsContainer"></div>
+      <div class="color-actions-row">
+        <button class="btn-color-tool" id="addColorBtn">
+          <span>➕</span> 添加颜色
+        </button>
+        <button class="btn-color-tool" id="delColorBtn">
+          <span>➖</span> 移除末尾
+        </button>
+      </div>
+
+      <div class="section-title" style="margin-top: 14px;">
+        <span>📊 相互作用力矩阵 (实时微调)</span>
+        <div style="display: flex; gap: 5px;">
+          <button class="btn-color-tool" id="quickFoodChainBtn" style="padding: 2px 8px; font-size: 10px; width: auto; border-color: rgba(0, 230, 118, 0.4); color: #00e676;" title="跳转编辑食物链捕食拓扑">
+            <span>🥩</span> 食物链
+          </button>
+          <button class="btn-color-tool" id="quickFullscreenMatrixBtn" style="padding: 2px 8px; font-size: 10px; width: auto;" title="全屏沉浸矩阵编辑器">
+            <span>⛶</span> 全屏编辑
+          </button>
+          <button class="btn-color-tool" id="quickZeroBtn" style="padding: 2px 8px; font-size: 10px; width: auto;" title="清空全部相互作用力（全部归零）">
+            <span>⭕</span> 全部置零
+          </button>
+        </div>
+      </div>
+      <div class="matrix-container">
+        <table class="matrix-table" id="matrixTable"></table>
+      </div>
+      <div class="matrix-actions-row">
+        <button class="btn-matrix-action btn-zero-matrix" id="zeroMatrixBtn" title="清空矩阵内全部相互作用力，全部设为 0.0">
           <span>⭕</span> 全部置零
         </button>
+        <button class="btn-matrix-action" id="openFullscreenMatrixBtn" style="border-color: #00e5ff; background: rgba(0, 229, 255, 0.12);" title="打开大屏/全屏沉浸式矩阵编辑器">
+          <span>⛶</span> 全屏编辑矩阵
+        </button>
+        <button class="btn-matrix-action" id="randomMatrixBtn" title="随机生成新的微粒引力与斥力矩阵">
+          <span>🎲</span> 随机新矩阵
+        </button>
       </div>
     </div>
-    <div class="matrix-container">
-      <table class="matrix-table" id="matrixTable"></table>
+
+    <!-- ==================== Tab 3: 环境与物理 ==================== -->
+    <div class="hud-tab-panel" id="tab-physics">
+      <div class="section-title">⚙️ 物理与动态环境参数</div>
+      <div class="control-group">
+        <div class="control-label">
+          <span>注入单细胞颜色数</span>
+          <span class="control-val" id="valCellColors">6 种颜色</span>
+        </div>
+        <input type="range" id="paramCellColors" min="2" max="6" step="1" value="6">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>初始单细胞数量</span>
+          <span class="control-val" id="valInitCells">3 个游动体</span>
+        </div>
+        <input type="range" id="paramInitCells" min="0" max="8" step="1" value="3">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>粒子总数</span>
+          <span class="control-val" id="valCount">2400</span>
+        </div>
+        <input type="range" id="paramCount" min="600" max="4000" step="100" value="2400">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>最大交互半径 (r_max)</span>
+          <span class="control-val" id="valRMax">92 px</span>
+        </div>
+        <input type="range" id="paramRMax" min="40" max="150" step="2" value="92">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>流体粘滞阻力 (Friction)</span>
+          <span class="control-val" id="valFriction">0.065</span>
+        </div>
+        <input type="range" id="paramFriction" min="0.01" max="0.20" step="0.005" value="0.065">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>活性布朗微扰 (打破死态停滞)</span>
+          <span class="control-val" id="valJitter">0.12</span>
+        </div>
+        <input type="range" id="paramJitter" min="0.0" max="0.6" step="0.02" value="0.12">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>交互力全局强度</span>
+          <span class="control-val" id="valForce">1.0</span>
+        </div>
+        <input type="range" id="paramForce" min="0.2" max="2.5" step="0.1" value="1.0">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>演化时间流速</span>
+          <span class="control-val" id="valSpeed">1.0x</span>
+        </div>
+        <input type="range" id="paramSpeed" min="0.1" max="2.5" step="0.1" value="1.0">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>粒子高清大小 (Radius)</span>
+          <span class="control-val" id="valParticleRadius">2.8 px</span>
+        </div>
+        <input type="range" id="paramParticleRadius" min="1.5" max="6.0" step="0.1" value="2.8">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>触摸吸引力 (Attract Force)</span>
+          <span class="control-val" id="valTouchAttract">1.2x</span>
+        </div>
+        <input type="range" id="paramTouchAttract" min="0.2" max="3.5" step="0.1" value="1.2">
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>触摸排斥力 (Repel Force)</span>
+          <span class="control-val" id="valTouchRepel">1.8x</span>
+        </div>
+        <input type="range" id="paramTouchRepel" min="0.2" max="4.0" step="0.1" value="1.8">
+      </div>
     </div>
-    <div class="matrix-actions-row">
-      <button class="btn-matrix-action btn-zero-matrix" id="zeroMatrixBtn" title="清空矩阵内全部相互作用力，全部设为 0.0">
-        <span>⭕</span> 全部置零
-      </button>
-      <button class="btn-matrix-action" id="openFullscreenMatrixBtn" style="border-color: #00e5ff; background: rgba(0, 229, 255, 0.12);" title="打开大屏/全屏沉浸式矩阵编辑器">
-        <span>⛶</span> 全屏编辑矩阵
-      </button>
-      <button class="btn-matrix-action" id="randomMatrixBtn" title="随机生成新的微粒引力与斥力矩阵">
-        <span>🎲</span> 随机新矩阵
-      </button>
+
+    <!-- ==================== Tab 4: 陀螺仪与重力 ==================== -->
+    <div class="hud-tab-panel" id="tab-gyro">
+      <div class="control-toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-title">📱 移动端陀螺仪重力微扰 (Gyroscope Tilt)</span>
+          <span class="toggle-desc">倾斜手机像培养皿般滑动粒子，晃动产生流体微扰波 (G)</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleGyro">
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+      <div class="control-group" style="margin-top: 4px;">
+        <div class="control-label">
+          <span>陀螺仪重力感应强度 (Tilt Force)</span>
+          <span class="control-val" id="valGyroStrength">1.0x</span>
+        </div>
+        <input type="range" id="paramGyroStrength" min="0.2" max="3.0" step="0.1" value="1.0">
+      </div>
+
+      <div class="control-group" style="margin-top: 8px; background: rgba(0, 229, 255, 0.03); padding: 8px; border-radius: 8px; border: 1px solid rgba(0, 229, 255, 0.1);">
+        <div class="control-label">
+          <span>🎨 各物种分色重力与浮力</span>
+          <span class="control-val" id="valColorGravityMode">细胞器沉降</span>
+        </div>
+        <div class="presets-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 6px;">
+          <button class="btn-preset active" data-grav-preset="organelle" title="核沉膜浮：紫核沉底(+1.8x)、黄膜中质(+1.0x)、青毛轻浮(+0.3x)、红粒上浮(-0.6x)">🔬 细胞器沉降</button>
+          <button class="btn-preset" data-grav-preset="buoyancy" title="正负浮力对流：冷暖色异向对流流动">🎈 浮力对流</button>
+          <button class="btn-preset" data-grav-preset="gradient" title="质量阶梯渐变：从重质递减至轻质/反向浮力">🌈 梯级渐变</button>
+          <button class="btn-preset" data-grav-preset="uniform" title="所有颜色物种受力等同(+1.0x)">⚖️ 均一重力</button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; margin-bottom: 3px;">
+          <span style="font-size: 10px; color: #888;">各颜色独立重力微调（负数为反向上浮）</span>
+          <button class="btn-color-tool" id="resetColorGravBtn" style="padding: 2px 7px; font-size: 9.5px; width: auto;" title="恢复当前预设重力">🔄 恢复预设</button>
+        </div>
+        <div class="color-gravity-list" id="colorGravityList"></div>
+      </div>
+    </div>
+
+    <!-- ==================== Tab 5: 空间音乐与声效 ==================== -->
+    <div class="hud-tab-panel" id="tab-audio">
+      <div class="section-title">
+        <span>🎵 空间音乐与粒子生乐</span>
+        <span style="font-size: 10px; color: #ff5252;" id="audioStatusBadge">● 已静音 (OFF)</span>
+      </div>
+      <div class="control-group">
+        <button class="btn-preset" id="hudAudioToggleBtn" style="width: 100%; justify-content: center; background: rgba(0, 229, 255, 0.1); border-color: rgba(0, 229, 255, 0.4);">
+          <span id="hudAudioIcon">🔈</span> <span id="hudAudioText">点击开启 粒子音乐与背景声 (M)</span>
+        </button>
+      </div>
+      <div class="control-group">
+        <div class="control-label">
+          <span>背景流动和弦音量 (Ambient Swells)</span>
+          <span class="control-val" id="valAmbientVol">40%</span>
+        </div>
+        <input type="range" id="paramAmbientVol" min="0" max="1" step="0.02" value="0.40">
+      </div>
+      <div class="control-group">
+        <div class="control-label">
+          <span>粒子运动电子音量 (Motion Synth)</span>
+          <span class="control-val" id="valParticleVol">55%</span>
+        </div>
+        <input type="range" id="paramParticleVol" min="0" max="1" step="0.02" value="0.55">
+      </div>
+      <div class="control-group">
+        <div class="control-label">
+          <span>音色清透度 (低音滤除 Cutoff)</span>
+          <span class="control-val" id="valBassCut">240 Hz</span>
+        </div>
+        <input type="range" id="paramBassCut" min="80" max="500" step="10" value="240">
+      </div>
+      <div class="control-group">
+        <div class="control-label">
+          <span>音阶调式 (Musical Scale)</span>
+        </div>
+        <div class="presets-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+          <button class="btn-preset active" data-scale="pentatonic">🌌 空灵五度</button>
+          <button class="btn-preset" data-scale="crystal">💎 水晶八音盒</button>
+          <button class="btn-preset" data-scale="celestial">✨ 星空利底亚</button>
+          <button class="btn-preset" data-scale="zen">🎋 禅意风铃</button>
+        </div>
+      </div>
     </div>
 
     <div class="actions-row">
@@ -1474,7 +1807,7 @@
 
   <!-- 底部右侧提示 -->
   <div class="tip-hud">
-    <span class="tool-label-full">左键吸引 | 右键排斥 | 双击注入 | G 陀螺仪 | B 繁殖 | D 凋亡 | 空格暂停 | M 音乐 | H 面板</span>
+    <span class="tool-label-full">左键吸引 | 右键排斥 | 双击注入 | G 陀螺仪 | E 捕食 | B 繁殖 | D 凋亡 | 空格暂停 | M 音乐 | H 面板</span>
     <span class="tool-label-short">👆 拖动吸引 | 双指排斥 | 双击注入 | 📱 倾斜感应</span>
   </div>
 
@@ -1525,6 +1858,105 @@
     let lifeCycleRate = 1.0;         // 演化速率倍数
     let birthCount = 0;              // 累计新生数量
     let deathCount = 0;              // 累计凋亡数量
+
+    // --- 生物链与捕食吞噬演化动力学 (Food Chain & Predation Dynamics) ---
+    let predationEnabled = false;        // 捕食吞噬总开关
+    let predationMode = "cyclic";        // 食物链法则: "cyclic"(环形闭环), "apex"(阶梯掠食), "sized"(大小通吃), "custom"(自由食物网)
+    let predationGrowthRate = 1.4;       // 吞噬后变大生长速率
+    let maxPredatorSize = 2.6;           // 最大巨化体型上限 (2.6x)
+    let satietySplitEnabled = true;      // 巨化饱食超临界有丝分裂
+    let totalPredationEvents = 0;        // 累计捕食吞噬次数
+    let maxObservedPredatorSize = 1.0;   // 历史观测最大霸主体型
+
+    // 捕食关系拓扑矩阵 predationMatrix[predator][prey] (1: 允许捕食, 0: 禁止)
+    let predationMatrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+
+    function initPredationMatrix(mode = predationMode) {
+      if (!predationMatrix || predationMatrix.length !== NUM_TYPES) {
+        predationMatrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+      }
+      for (let i = 0; i < NUM_TYPES; i++) {
+        if (!predationMatrix[i] || predationMatrix[i].length !== NUM_TYPES) {
+          predationMatrix[i] = Array(NUM_TYPES).fill(0);
+        }
+        for (let j = 0; j < NUM_TYPES; j++) {
+          if (i === j) {
+            predationMatrix[i][j] = 0;
+            continue;
+          }
+          if (mode === "cyclic") {
+            const n = Math.max(2, NUM_TYPES);
+            predationMatrix[i][j] = ((i + 1) % n === j) ? 1 : 0;
+          } else if (mode === "apex") {
+            predationMatrix[i][j] = (i < j) ? 1 : 0;
+          } else if (mode === "all") {
+            predationMatrix[i][j] = 1;
+          } else if (mode === "clear") {
+            predationMatrix[i][j] = 0;
+          }
+        }
+      }
+    }
+
+    function canPredate(p1, p2) {
+      if (p1 === p2) return false;
+      const t1 = p1.type;
+      const t2 = p2.type;
+      if (t1 === t2) return false; // 同物种不相残
+
+      const s1 = p1.sizeMult || 1.0;
+      const s2 = p2.sizeMult || 1.0;
+
+      if (predationMode === "sized") {
+        // 体型通吃：体型大 20% 以上即可捕食吞噬小粒子
+        return s1 > s2 * 1.20;
+      }
+      
+      // cyclic / apex / custom / all 皆通过食物网拓扑矩阵高速判定
+      if (!predationMatrix[t1] || !predationMatrix[t1][t2]) return false;
+      return true;
+    }
+
+    function executePredation(p1, p2) {
+      const s1 = p1.sizeMult || 1.0;
+      const s2 = p2.sizeMult || 1.0;
+
+      // 吞噬后吸收能量，迅速变大！
+      const growth = 0.16 * predationGrowthRate * Math.min(s2, 1.5);
+      p1.sizeMult = Math.min(maxPredatorSize, s1 + growth);
+      if (p1.sizeMult > maxObservedPredatorSize) {
+        maxObservedPredatorSize = p1.sizeMult;
+      }
+      p1.eatPulse = 1.0;
+      p1.killCount = (p1.killCount || 0) + 1;
+      totalPredationEvents++;
+
+      if (typeof audioEngine !== "undefined") {
+        audioEngine.playPredationEffect(p1.sizeMult);
+      }
+
+      // 饱食分裂机制：变大至临界体型后触发有丝分裂繁衍后代
+      if (satietySplitEnabled && p1.sizeMult >= maxPredatorSize * 0.90) {
+        p1.sizeMult = Math.max(1.1, p1.sizeMult * 0.52);
+        p2.type = p1.type;
+        p2.x = (p1.x + (Math.random() - 0.5) * 18 + width) % width;
+        p2.y = (p1.y + (Math.random() - 0.5) * 18 + height) % height;
+        p2.vx = p1.vx + (Math.random() - 0.5) * 2.2;
+        p2.vy = p1.vy + (Math.random() - 0.5) * 2.2;
+        p2.sizeMult = p1.sizeMult;
+        p2.eatPulse = 0.8;
+        p2._eaten = true;
+      } else {
+        // 生态重塑闭环：被吃掉的粒子在远离掠食者的开阔地带重生为幼体微粒，维持物种多样性不灭绝
+        p2.x = Math.random() * width;
+        p2.y = Math.random() * height;
+        p2.vx = (Math.random() - 0.5) * 1.5;
+        p2.vy = (Math.random() - 0.5) * 1.5;
+        p2.sizeMult = 0.85;
+        p2.eatPulse = 0;
+        p2._eaten = true;
+      }
+    }
 
     // --- 移动端陀螺仪重力微扰与物种分色重力 ---
     let gyroEnabled = false;         // 陀螺仪微扰开关
@@ -1881,6 +2313,31 @@
         }
       }
 
+      // 捕食吞噬时的晶透水泡音效 (微观有机吞咽感，体型越大泛音越深沉)
+      playPredationEffect(sizeMult = 1.0) {
+        if (!this.isEnabled || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        if (this._lastPredSound && now - this._lastPredSound < 0.075) return;
+        this._lastPredSound = now;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        const startFreq = Math.max(260, 720 / Math.sqrt(sizeMult || 1.0));
+        const endFreq = startFreq * 0.65;
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.08);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.065, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+
+        osc.connect(gain);
+        gain.connect(this.particleGain);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+
       // 能量激活唤醒空灵磬音 (330Hz / 660Hz 纯净颂钵余韵，无 40Hz 低频震颤)
       playEnergyWakeEffect() {
         if (!this.isEnabled || !this.ctx) return;
@@ -2072,6 +2529,31 @@
         });
       }
 
+      // 同步扩展食物链捕食矩阵
+      if (typeof predationMatrix !== "undefined") {
+        const newPred = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+        for (let i = 0; i < oldLen; i++) {
+          for (let j = 0; j < oldLen; j++) {
+            newPred[i][j] = (predationMatrix[i] && predationMatrix[i][j]) ? predationMatrix[i][j] : 0;
+          }
+        }
+        if (predationMode === "cyclic") {
+          for (let i = 0; i < NUM_TYPES; i++) {
+            for (let j = 0; j < NUM_TYPES; j++) {
+              newPred[i][j] = ((i + 1) % NUM_TYPES === j) ? 1 : 0;
+            }
+          }
+        } else if (predationMode === "apex") {
+          for (let i = 0; i < NUM_TYPES; i++) {
+            for (let j = 0; j < NUM_TYPES; j++) {
+              newPred[i][j] = (i < j) ? 1 : 0;
+            }
+          }
+        }
+        predationMatrix = newPred;
+        if (typeof renderFoodChainTable === "function") renderFoodChainTable();
+      }
+
       updateColorUI();
       renderMatrixTable();
       document.getElementById("statParticles").textContent = particles.length;
@@ -2103,6 +2585,37 @@
         ni++;
       }
       matrix = newMatrix;
+
+      // 同步缩减食物链捕食矩阵
+      if (typeof predationMatrix !== "undefined") {
+        const newPred = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+        let pni = 0;
+        for (let i = 0; i < oldLen; i++) {
+          if (i === delIdx) continue;
+          let pnj = 0;
+          for (let j = 0; j < oldLen; j++) {
+            if (j === delIdx) continue;
+            newPred[pni][pnj] = (predationMatrix[i] && predationMatrix[i][j]) ? predationMatrix[i][j] : 0;
+            pnj++;
+          }
+          pni++;
+        }
+        if (predationMode === "cyclic") {
+          for (let i = 0; i < NUM_TYPES; i++) {
+            for (let j = 0; j < NUM_TYPES; j++) {
+              newPred[i][j] = ((i + 1) % NUM_TYPES === j) ? 1 : 0;
+            }
+          }
+        } else if (predationMode === "apex") {
+          for (let i = 0; i < NUM_TYPES; i++) {
+            for (let j = 0; j < NUM_TYPES; j++) {
+              newPred[i][j] = (i < j) ? 1 : 0;
+            }
+          }
+        }
+        predationMatrix = newPred;
+        if (typeof renderFoodChainTable === "function") renderFoodChainTable();
+      }
 
       if (cellColorCount > NUM_TYPES) {
         cellColorCount = NUM_TYPES;
@@ -2500,6 +3013,12 @@
         }
       }
 
+      if (predationEnabled) {
+        for (let i = 0; i < particles.length; i++) {
+          particles[i]._eaten = false;
+        }
+      }
+
       for (let i = 0; i < particles.length; i++) {
         const p1 = particles[i];
         const t1 = p1.type;
@@ -2547,6 +3066,16 @@
                 const fScale = (force / r) * fMult;
                 fx += dx * fScale;
                 fy += dy * fScale;
+
+                // 生物链相互捕食与吞噬变大判定
+                if (predationEnabled && !p1._eaten && !p2._eaten) {
+                  const r1 = particleRadius * (p1.sizeMult || 1.0);
+                  const r2 = particleRadius * (p2.sizeMult || 1.0);
+                  const contactR = (r1 + r2) * 0.82;
+                  if (r < contactR && canPredate(p1, p2)) {
+                    executePredation(p1, p2);
+                  }
+                }
               }
             }
           }
@@ -2602,8 +3131,20 @@
           fy += (Math.random() - 0.5) * jitter * 2.0;
         }
 
-        p1.vx = (p1.vx + fx * dt) * (1.0 - friction);
-        p1.vy = (p1.vy + fy * dt) * (1.0 - friction);
+        // 质量惯性：吞噬变大后的巨化粒子具备更高质量与惯性
+        const mass = p1.sizeMult ? Math.pow(p1.sizeMult, 1.15) : 1.0;
+        p1.vx = (p1.vx + (fx / mass) * dt) * (1.0 - friction);
+        p1.vy = (p1.vy + (fy / mass) * dt) * (1.0 - friction);
+
+        // 新陈代谢与微光阻尼淡出
+        if (p1.sizeMult && p1.sizeMult > 1.0) {
+          p1.sizeMult = Math.max(1.0, p1.sizeMult - 0.00035);
+        }
+        if (p1.eatPulse && p1.eatPulse > 0.01) {
+          p1.eatPulse *= 0.92;
+        } else {
+          p1.eatPulse = 0;
+        }
       }
 
       let totalSpeed = 0;
@@ -2837,12 +3378,18 @@
       if (deathEl) deathEl.textContent = "-" + deathCount;
 
       const statLifeRow = document.getElementById("statLifeRow");
+      const predCountEl = document.getElementById("hudPredationCount");
+      if (predCountEl) predCountEl.textContent = totalPredationEvents;
+      const maxSizeEl = document.getElementById("hudMaxPredatorSize");
+      if (maxSizeEl) maxSizeEl.textContent = maxObservedPredatorSize.toFixed(1) + "x";
+
       if (statLifeRow) {
-        if (reproductionEnabled || apoptosisEnabled) {
+        if (reproductionEnabled || apoptosisEnabled || predationEnabled) {
           statLifeRow.style.display = "block";
           const repText = reproductionEnabled ? "繁殖:开" : "繁殖:关";
           const apoText = apoptosisEnabled ? "凋亡:开" : "凋亡:关";
-          document.getElementById("statLifeText").textContent = repText + " | " + apoText;
+          const predText = predationEnabled ? `捕食:${totalPredationEvents}次` : "捕食:关";
+          document.getElementById("statLifeText").textContent = `${repText} | ${apoText} | ${predText}`;
           document.getElementById("statBirthDisplay").textContent = "+" + birthCount;
           document.getElementById("statDeathDisplay").textContent = "-" + deathCount;
         } else {
@@ -3107,11 +3654,27 @@
         for (let i = 0; i < particles.length; i++) {
           const p = particles[i];
           if (p.type === t) {
-            ctx.moveTo(p.x + particleRadius, p.y);
-            ctx.arc(p.x, p.y, particleRadius, 0, Math.PI * 2);
+            const r = (p.sizeMult && p.sizeMult !== 1.0) ? (particleRadius * p.sizeMult) : particleRadius;
+            ctx.moveTo(p.x + r, p.y);
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           }
         }
         ctx.fill();
+
+        // 捕食吞噬瞬间的高光微晶辐射光环
+        if (predationEnabled) {
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            if (p.type === t && p.eatPulse > 0.12) {
+              const r = particleRadius * (p.sizeMult || 1.0) * (1.1 + p.eatPulse * 0.38);
+              ctx.strokeStyle = `rgba(255, 255, 255, ${p.eatPulse * 0.65})`;
+              ctx.lineWidth = 1.2;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+        }
       }
 
       if (mouseState.down) {
@@ -3143,6 +3706,123 @@
       }
 
       requestAnimationFrame(loop);
+    }
+
+    // --- 食物链拓扑网格表格渲染与摘要更新 ---
+    function updateFoodChainSummary() {
+      const summaryEl = document.getElementById("foodChainSummaryText");
+      if (!summaryEl) return;
+
+      if (predationMode === "sized") {
+        summaryEl.textContent = "🐟 体型主导法则：大鱼吃小鱼 (体型超出 20% 即可吞噬任意异类)";
+        summaryEl.style.color = "#00e5ff";
+        return;
+      }
+
+      // 检查是否为完整环形闭环
+      let isCyclic = true;
+      for (let i = 0; i < NUM_TYPES; i++) {
+        for (let j = 0; j < NUM_TYPES; j++) {
+          const expected = (i !== j && (i + 1) % NUM_TYPES === j) ? 1 : 0;
+          if ((predationMatrix[i] ? predationMatrix[i][j] : 0) !== expected) {
+            isCyclic = false;
+            break;
+          }
+        }
+        if (!isCyclic) break;
+      }
+
+      if (isCyclic) {
+        let chain = [];
+        for (let i = 0; i < NUM_TYPES; i++) {
+          chain.push(COLORS[i].name);
+        }
+        chain.push("闭环 ↺");
+        summaryEl.textContent = chain.join(" ➔ ");
+        summaryEl.style.color = "#00e676";
+        return;
+      }
+
+      // 计算每个物种捕食的目标
+      let relations = [];
+      let totalEdges = 0;
+      for (let i = 0; i < NUM_TYPES; i++) {
+        let preys = [];
+        for (let j = 0; j < NUM_TYPES; j++) {
+          if (predationMatrix[i] && predationMatrix[i][j] === 1) {
+            preys.push(COLORS[j].name[0]);
+            totalEdges++;
+          }
+        }
+        if (preys.length > 0) {
+          relations.push(`${COLORS[i].name}➔[${preys.join(",")}]`);
+        }
+      }
+
+      if (totalEdges === 0) {
+        summaryEl.textContent = "⭕ 无捕食关系 (全体共存和平状态)";
+        summaryEl.style.color = "#888";
+      } else if (totalEdges === NUM_TYPES * (NUM_TYPES - 1)) {
+        summaryEl.textContent = `⚔️ 全员互猎食物网 (${totalEdges} 组捕食关系全部开启)`;
+        summaryEl.style.color = "#ff5252";
+      } else {
+        summaryEl.textContent = relations.slice(0, 3).join(" | ") + (relations.length > 3 ? ` ...等共 ${totalEdges} 组捕食关系` : ` (共 ${totalEdges} 组捕食关系)`);
+        summaryEl.style.color = "#ffea00";
+      }
+    }
+
+    function renderFoodChainTable() {
+      const table = document.getElementById("foodChainTable");
+      if (!table) return;
+
+      let html = "<thead><tr><th style='width:24px' title='行=捕食者 🦈\\n列=猎物 🎯'>🦈\\🎯</th>";
+      for (let j = 0; j < NUM_TYPES; j++) {
+        html += `<th style="color: ${COLORS[j].hex}" title="猎物: ${COLORS[j].name}">${COLORS[j].name[0]}</th>`;
+      }
+      html += "</tr></thead><tbody>";
+
+      for (let i = 0; i < NUM_TYPES; i++) {
+        html += `<tr><th style="color: ${COLORS[i].hex}" title="捕食者: ${COLORS[i].name}">${COLORS[i].name[0]}</th>`;
+        for (let j = 0; j < NUM_TYPES; j++) {
+          if (i === j) {
+            html += `<td class="fc-cell fc-cell-self" title="${COLORS[i].name} 同类不相残">—</td>`;
+          } else {
+            const isHunting = predationMatrix[i] && predationMatrix[i][j] === 1;
+            const bg = isHunting ? "rgba(0, 230, 118, 0.28)" : "rgba(255, 255, 255, 0.04)";
+            const border = isHunting ? "1px solid rgba(0, 230, 118, 0.7)" : "1px solid rgba(255, 255, 255, 0.08)";
+            const color = isHunting ? "#00ff88" : "#555";
+            const icon = isHunting ? "🦈" : "·";
+            const title = `${COLORS[i].name} ➔ ${COLORS[j].name}: ${isHunting ? "正在捕食 (点击解除)" : "不捕食 (点击建立捕食)"}`;
+            html += `<td class="fc-cell ${isHunting ? 'active' : ''}" data-pi="${i}" data-pj="${j}" style="background: ${bg}; border: ${border}; color: ${color};" title="${title}">${icon}</td>`;
+          }
+        }
+        html += "</tr>";
+      }
+      html += "</tbody>";
+      table.innerHTML = html;
+
+      table.querySelectorAll(".fc-cell:not(.fc-cell-self)").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const pi = parseInt(cell.getAttribute("data-pi"));
+          const pj = parseInt(cell.getAttribute("data-pj"));
+          if (!predationMatrix[pi]) predationMatrix[pi] = [];
+          predationMatrix[pi][pj] = predationMatrix[pi][pj] === 1 ? 0 : 1;
+
+          predationMode = "custom";
+          if (!predationEnabled) {
+            predationEnabled = true;
+            const chk = document.getElementById("togglePredation");
+            if (chk) chk.checked = true;
+          }
+          updatePredationUI();
+          renderFoodChainTable();
+          if (typeof audioEngine !== "undefined" && audioEngine.isEnabled) {
+            audioEngine.playParticleTone(pi, 1.0, width * 0.5, height * 0.5);
+          }
+        });
+      });
+
+      updateFoodChainSummary();
     }
 
     // --- 矩阵可视化表格渲染 (自适应任意颜色数) ---
@@ -3486,6 +4166,186 @@
       });
     }
 
+    // --- HUD 现代化分类标签页交互切换 ---
+    document.querySelectorAll(".hud-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetTab = btn.getAttribute("data-tab");
+        document.querySelectorAll(".hud-tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".hud-tab-panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        const panel = document.getElementById(targetTab);
+        if (panel) panel.classList.add("active");
+      });
+    });
+
+    // --- 生物链捕食与吞噬系统 UI 绑定 ---
+    const togglePredation = document.getElementById("togglePredation");
+    if (togglePredation) {
+      togglePredation.checked = predationEnabled;
+      togglePredation.addEventListener("change", e => {
+        predationEnabled = e.target.checked;
+        updatePredationUI();
+        updateLifeCycleStatsUI();
+      });
+    }
+
+    document.querySelectorAll("[data-pred-mode]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const mode = btn.getAttribute("data-pred-mode");
+        predationMode = mode;
+        if (mode === "cyclic") {
+          initPredationMatrix("cyclic");
+        } else if (mode === "apex") {
+          initPredationMatrix("apex");
+        }
+        if (!predationEnabled) {
+          predationEnabled = true;
+          if (togglePredation) togglePredation.checked = true;
+        }
+        updatePredationUI();
+        renderFoodChainTable();
+        updateFoodChainSummary();
+      });
+    });
+
+    // 食物链拓扑快捷预设工具
+    document.getElementById("fcPresetAll")?.addEventListener("click", () => {
+      initPredationMatrix("all");
+      predationMode = "custom";
+      if (!predationEnabled) {
+        predationEnabled = true;
+        if (togglePredation) togglePredation.checked = true;
+      }
+      updatePredationUI();
+      renderFoodChainTable();
+      updateFoodChainSummary();
+      if (typeof audioEngine !== "undefined" && audioEngine.isEnabled) {
+        audioEngine.playParticleTone(0, 1.4, width * 0.5, height * 0.5);
+      }
+    });
+
+    document.getElementById("fcPresetReverse")?.addEventListener("click", () => {
+      const newMat = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
+      for (let i = 0; i < NUM_TYPES; i++) {
+        for (let j = 0; j < NUM_TYPES; j++) {
+          if (i !== j) {
+            newMat[i][j] = (predationMatrix[j] && predationMatrix[j][i]) ? 1 : 0;
+          }
+        }
+      }
+      predationMatrix = newMat;
+      predationMode = "custom";
+      if (!predationEnabled) {
+        predationEnabled = true;
+        if (togglePredation) togglePredation.checked = true;
+      }
+      updatePredationUI();
+      renderFoodChainTable();
+      updateFoodChainSummary();
+      if (typeof audioEngine !== "undefined" && audioEngine.isEnabled) {
+        audioEngine.playParticleTone(1, 1.2, width * 0.5, height * 0.5);
+      }
+    });
+
+    document.getElementById("fcPresetRandom")?.addEventListener("click", () => {
+      for (let i = 0; i < NUM_TYPES; i++) {
+        for (let j = 0; j < NUM_TYPES; j++) {
+          if (i === j) {
+            predationMatrix[i][j] = 0;
+          } else {
+            predationMatrix[i][j] = Math.random() < 0.35 ? 1 : 0;
+          }
+        }
+      }
+      predationMode = "custom";
+      if (!predationEnabled) {
+        predationEnabled = true;
+        if (togglePredation) togglePredation.checked = true;
+      }
+      updatePredationUI();
+      renderFoodChainTable();
+      updateFoodChainSummary();
+      if (typeof audioEngine !== "undefined" && audioEngine.isEnabled) {
+        audioEngine.playParticleTone(2, 1.3, width * 0.5, height * 0.5);
+      }
+    });
+
+    document.getElementById("fcPresetClear")?.addEventListener("click", () => {
+      initPredationMatrix("clear");
+      predationMode = "custom";
+      updatePredationUI();
+      renderFoodChainTable();
+      updateFoodChainSummary();
+      if (typeof audioEngine !== "undefined" && audioEngine.isEnabled) {
+        audioEngine.playParticleTone(3, 0.8, width * 0.5, height * 0.5);
+      }
+    });
+
+    // 物种面板一键跳转编辑食物链
+    document.getElementById("quickFoodChainBtn")?.addEventListener("click", () => {
+      document.querySelectorAll(".hud-tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".hud-tab-panel").forEach(p => p.classList.remove("active"));
+      const ecoBtn = document.querySelector('[data-tab="tab-ecology"]');
+      const ecoPanel = document.getElementById("tab-ecology");
+      if (ecoBtn) ecoBtn.classList.add("active");
+      if (ecoPanel) ecoPanel.classList.add("active");
+      const fcBox = document.getElementById("foodChainEditorBox");
+      if (fcBox) fcBox.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    const paramPredationGrowth = document.getElementById("paramPredationGrowth");
+    const valPredationGrowth = document.getElementById("valPredationGrowth");
+    if (paramPredationGrowth) {
+      paramPredationGrowth.value = predationGrowthRate;
+      paramPredationGrowth.addEventListener("input", e => {
+        predationGrowthRate = parseFloat(e.target.value);
+        if (valPredationGrowth) valPredationGrowth.textContent = predationGrowthRate.toFixed(1) + "x";
+      });
+    }
+
+    const paramPredationMaxSize = document.getElementById("paramPredationMaxSize");
+    const valPredationMaxSize = document.getElementById("valPredationMaxSize");
+    if (paramPredationMaxSize) {
+      paramPredationMaxSize.value = maxPredatorSize;
+      paramPredationMaxSize.addEventListener("input", e => {
+        maxPredatorSize = parseFloat(e.target.value);
+        if (valPredationMaxSize) valPredationMaxSize.textContent = maxPredatorSize.toFixed(1) + "x";
+      });
+    }
+
+    const toggleSatietySplit = document.getElementById("toggleSatietySplit");
+    if (toggleSatietySplit) {
+      toggleSatietySplit.checked = satietySplitEnabled;
+      toggleSatietySplit.addEventListener("change", e => {
+        satietySplitEnabled = e.target.checked;
+      });
+    }
+
+    function updatePredationUI() {
+      const badge = document.getElementById("predationStatusBadge");
+      const valMode = document.getElementById("valPredationMode");
+      const modeLabels = { cyclic: "环形闭环", apex: "阶梯掠食", sized: "大小通吃", custom: "自由食物网" };
+      if (badge) {
+        if (predationEnabled) {
+          badge.textContent = `● 捕食吞噬中 (${modeLabels[predationMode] || "ON"})`;
+          badge.style.color = "#00e676";
+        } else {
+          badge.textContent = "● 已关闭 (OFF)";
+          badge.style.color = "#888";
+        }
+      }
+      if (valMode) {
+        valMode.textContent = modeLabels[predationMode] || predationMode;
+      }
+      document.querySelectorAll("[data-pred-mode]").forEach(btn => {
+        if (btn.getAttribute("data-pred-mode") === predationMode) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
+      });
+    }
+
     // --- 移动端陀螺仪 UI 绑定 ---
     const toggleGyro = document.getElementById("toggleGyro");
     if (toggleGyro) {
@@ -3548,13 +4408,159 @@
     const hudCloseBtn = document.getElementById("hudCloseBtn");
     if (hudCloseBtn) hudCloseBtn.addEventListener("click", toggleHud);
 
-    document.getElementById("fullscreenBtn").addEventListener("click", () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
+    // =========================================================================
+    // iOS 全屏与下拉防误退多重防御体系 (Multi-tier Anti-exit Defense System)
+    // =========================================================================
+    let userInitiatedFsExit = false;
+    let restorePillTimer = null;
+
+    function isFullscreenActive() {
+      return !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement ||
+        document.body.classList.contains("pseudo-fullscreen")
+      );
+    }
+
+    function updateFullscreenUI() {
+      const isFs = isFullscreenActive();
+      const fsBtn = document.getElementById("fullscreenBtn");
+      const fsIcon = document.getElementById("fullscreenIcon");
+      const fsText = document.getElementById("fullscreenText");
+      const fsTextShort = document.getElementById("fullscreenTextShort");
+
+      if (fsBtn) {
+        if (isFs) {
+          fsBtn.classList.add("fullscreen-active");
+          if (fsIcon) fsIcon.textContent = "🗗";
+          if (fsText) fsText.textContent = "退出全屏";
+          if (fsTextShort) fsTextShort.textContent = "退出";
+        } else {
+          fsBtn.classList.remove("fullscreen-active");
+          if (fsIcon) fsIcon.textContent = "⛶";
+          if (fsText) fsText.textContent = "全屏模式";
+          if (fsTextShort) fsTextShort.textContent = "全屏";
+        }
       }
-    });
+    }
+
+    async function requestFullscreenCompat() {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        return docEl.requestFullscreen();
+      } else if (docEl.webkitRequestFullscreen) {
+        return docEl.webkitRequestFullscreen();
+      } else if (docEl.webkitEnterFullscreen) {
+        return docEl.webkitEnterFullscreen();
+      } else if (docEl.mozRequestFullScreen) {
+        return docEl.mozRequestFullScreen();
+      } else if (docEl.msRequestFullscreen) {
+        return docEl.msRequestFullscreen();
+      }
+      throw new Error("Fullscreen API not supported");
+    }
+
+    async function exitFullscreenCompat() {
+      if (document.exitFullscreen) {
+        return document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        return document.webkitExitFullscreen();
+      } else if (document.webkitCancelFullScreen) {
+        return document.webkitCancelFullScreen();
+      } else if (document.mozCancelFullScreen) {
+        return document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) {
+        return document.msExitFullscreen();
+      }
+      throw new Error("Exit Fullscreen API not supported");
+    }
+
+    const restorePill = document.getElementById("fullscreenRestorePill");
+    function showRestorePill(msg) {
+      if (!restorePill) return;
+      if (msg) {
+        restorePill.innerHTML = `<span>⛶</span><span>${msg}</span>`;
+      } else {
+        restorePill.innerHTML = `<span>⛶</span><span>已退出全屏 · 轻触一键恢复</span>`;
+      }
+      restorePill.classList.add("show");
+      if (restorePillTimer) clearTimeout(restorePillTimer);
+      restorePillTimer = setTimeout(() => {
+        hideRestorePill();
+      }, 5000);
+    }
+
+    function hideRestorePill() {
+      if (!restorePill) return;
+      restorePill.classList.remove("show");
+      if (restorePillTimer) {
+        clearTimeout(restorePillTimer);
+        restorePillTimer = null;
+      }
+    }
+
+    if (restorePill) {
+      restorePill.addEventListener("click", () => {
+        hideRestorePill();
+        toggleFullscreen();
+      });
+    }
+
+    async function toggleFullscreen() {
+      const isFs = isFullscreenActive();
+      userInitiatedFsExit = false;
+
+      if (!isFs) {
+        hideRestorePill();
+        try {
+          await requestFullscreenCompat();
+        } catch (err) {
+          console.log("Native Fullscreen not available or denied, activating pseudo-fullscreen:", err);
+          document.body.classList.add("pseudo-fullscreen");
+          window.scrollTo(0, 1);
+          showRestorePill("已开启沉浸全屏 · 💡添加到主屏幕免下拉退出");
+        }
+      } else {
+        userInitiatedFsExit = true;
+        hideRestorePill();
+        if (document.body.classList.contains("pseudo-fullscreen")) {
+          document.body.classList.remove("pseudo-fullscreen");
+        } else {
+          try {
+            await exitFullscreenCompat();
+          } catch (err) {
+            console.warn("Exit fullscreen error:", err);
+          }
+        }
+      }
+      updateFullscreenUI();
+      setTimeout(resizeCanvas, 100);
+    }
+
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    if (fullscreenBtn) {
+      fullscreenBtn.addEventListener("click", toggleFullscreen);
+    }
+
+    function handleFullscreenChange() {
+      const isFs = isFullscreenActive();
+      updateFullscreenUI();
+      resizeCanvas();
+      setTimeout(resizeCanvas, 120);
+
+      // 如果非用户主动点击按钮退出全屏，说明发生 iOS 手势误退，弹出快速恢复悬浮条
+      if (!isFs && !userInitiatedFsExit) {
+        showRestorePill("已退出全屏 · 轻触一键恢复");
+      }
+      userInitiatedFsExit = false;
+    }
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
 
     // --- 音频 UI 状态联动与交互绑定 ---
     function updateAudioUI(enabled) {
@@ -3657,6 +4663,9 @@
         else openMatrixModal();
       } else if (e.key === "g" || e.key === "G") {
         setGyroState(!gyroEnabled);
+      } else if (e.key === "e" || e.key === "E") {
+        const t = document.getElementById("togglePredation");
+        if (t) { t.checked = !t.checked; t.dispatchEvent(new Event("change")); }
       } else if (e.key === "b" || e.key === "B") {
         const t = document.getElementById("toggleReproduction");
         if (t) { t.checked = !t.checked; t.dispatchEvent(new Event("change")); }
@@ -3747,12 +4756,66 @@
       mouseState.down = false;
     });
 
+    // =========================================================================
+    // iOS 橡皮筋下拉拦截与全屏防误退底层加固 (Overscroll & Touch Leak Defense)
+    // =========================================================================
+    // 1. 全局非被动 touchmove 拦截：阻止非滚动容器（空白区、状态条、顶栏）上的滑动冒泡至 iOS 视口
+    document.addEventListener("touchmove", e => {
+      const target = e.target;
+      const scrollable = target && target.closest ? target.closest(".hud, .matrix-modal-content, .matrix-table-wrap, .color-gravity-list") : null;
+      if (!scrollable) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      }
+    }, { passive: false });
+
+    // 2. 滚动容器边界吸附锁 (Overscroll Boundary Clamping Lock)
+    // 防止在 HUD 面板或矩阵表格顶部下拉时，橡皮筋弹性溢出传递给 iOS 窗口，导致触发退出全屏
+    (function setupOverscrollLock() {
+      function applyLock(el) {
+        if (!el) return;
+        let startY = 0;
+        el.addEventListener("touchstart", e => {
+          if (e.touches && e.touches.length > 0) {
+            startY = e.touches[0].clientY;
+            // 如果处于绝对顶端，微调 1px，切断 iOS 顶部硬边界橡皮筋回弹
+            if (el.scrollTop <= 0) {
+              el.scrollTop = 1;
+            } else if (el.scrollTop + el.clientHeight >= el.scrollHeight) {
+              el.scrollTop = el.scrollHeight - el.clientHeight - 1;
+            }
+          }
+        }, { passive: true });
+
+        el.addEventListener("touchmove", e => {
+          if (e.touches && e.touches.length > 0) {
+            const curY = e.touches[0].clientY;
+            const isPullDown = curY > startY;
+            const isPullUp = curY < startY;
+
+            if (isPullDown && el.scrollTop <= 1) {
+              // 处于顶端继续下拉时，拦截手势，切断弹性动量外泄
+              if (e.cancelable) e.preventDefault();
+            } else if (isPullUp && el.scrollTop + el.clientHeight >= el.scrollHeight - 1) {
+              if (e.cancelable) e.preventDefault();
+            }
+          }
+        }, { passive: false });
+      }
+
+      document.querySelectorAll(".hud, .matrix-modal-content, .matrix-table-wrap, .color-gravity-list").forEach(applyLock);
+    })();
+
     window.addEventListener("orientationchange", () => {
       setTimeout(resizeCanvas, 150);
     });
 
     // 启动系统
     updateColorUI();
+    initPredationMatrix("cyclic");
+    renderFoodChainTable();
+    updatePredationUI();
     applyColorGravPreset("organelle");
     applyPreset("protozoan");
     requestAnimationFrame(loop);
