@@ -402,6 +402,104 @@
       color: #00e5ff;
       box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
     }
+    .tool-pill.gyro-active {
+      border-color: #00e5ff;
+      background: rgba(0, 229, 255, 0.22);
+      color: #00e5ff;
+      box-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
+    }
+
+    /* 现代化微型开关组件 (Toggle Switch) */
+    .control-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .control-toggle-row:last-child {
+      border-bottom: none;
+    }
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-right: 10px;
+    }
+    .toggle-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .toggle-desc {
+      font-size: 9.5px;
+      color: #777;
+      line-height: 1.3;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider-toggle {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.14);
+      transition: .25s ease;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .slider-toggle:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 2px;
+      bottom: 2px;
+      background-color: #bbb;
+      transition: .25s ease;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .switch input:checked + .slider-toggle {
+      background-color: rgba(0, 229, 255, 0.25);
+      border-color: #00e5ff;
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+    }
+    .switch input:checked + .slider-toggle:before {
+      transform: translateX(18px);
+      background-color: #00e5ff;
+      box-shadow: 0 0 6px #00e5ff;
+    }
+    .switch-green input:checked + .slider-toggle {
+      background-color: rgba(0, 230, 118, 0.25);
+      border-color: #00e676;
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.35);
+    }
+    .switch-green input:checked + .slider-toggle:before {
+      background-color: #00e676;
+      box-shadow: 0 0 6px #00e676;
+    }
+    .switch-orange input:checked + .slider-toggle {
+      background-color: rgba(255, 145, 0, 0.25);
+      border-color: #ff9100;
+      box-shadow: 0 0 10px rgba(255, 145, 0, 0.35);
+    }
+    .switch-orange input:checked + .slider-toggle:before {
+      background-color: #ff9100;
+      box-shadow: 0 0 6px #ff9100;
+    }
 
     .tool-label-short {
       display: none;
@@ -486,12 +584,20 @@
         justify-content: flex-end;
         gap: 4px;
         z-index: 50;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        max-width: calc(100vw - 16px);
+      }
+      .top-right-tools::-webkit-scrollbar {
+        display: none;
       }
       .tool-pill {
         padding: 5px 8px;
         font-size: 11px;
         border-radius: 14px;
         gap: 3px;
+        flex-shrink: 0;
       }
       /* 控制面板置于顶部工具条下方，绝不遮挡顶部按钮，宽度自适应 */
       .hud {
@@ -550,6 +656,13 @@
         justify-content: flex-end;
         gap: 4px;
         z-index: 60 !important;
+        max-width: 65vw;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .top-right-tools::-webkit-scrollbar {
+        display: none;
       }
       .tool-pill {
         padding: 4px 8px;
@@ -557,6 +670,7 @@
         border-radius: 12px;
         gap: 3px;
         background: rgba(12, 12, 18, 0.88);
+        flex-shrink: 0;
       }
       /* 横屏下控制面板化身左侧紧凑抽屉边栏，右侧留出广阔粒子空间，上下精确锚定在安全区内 */
       .hud {
@@ -913,6 +1027,11 @@
       <span class="tool-label-full" id="topAudioText">音乐声效: 关 (M)</span>
       <span class="tool-label-short" id="topAudioTextShort">音乐: 关</span>
     </div>
+    <div class="tool-pill" id="gyroToggleBtn" title="开启/关闭手机陀螺仪重力微扰 (倾斜手机施加重力场)">
+      <span id="topGyroIcon">📱</span>
+      <span class="tool-label-full" id="topGyroText">陀螺仪: 关 (G)</span>
+      <span class="tool-label-short" id="topGyroTextShort">陀螺: 关</span>
+    </div>
     <div class="tool-pill" id="toggleHudBtn" title="显示/隐藏控制面板">
       <span>👁️</span>
       <span class="tool-label-full">影院模式 (H)</span>
@@ -1031,6 +1150,44 @@
       </button>
     </div>
 
+    <!-- 生命演化动力学 (繁殖与凋亡) -->
+    <div class="section-title">
+      <span>🧬 生命生态与周期 (繁殖与凋亡)</span>
+      <span style="font-size: 10px; color: #888;" id="lifeCycleStatusBadge">● 经典守恒 (OFF)</span>
+    </div>
+    <div class="control-toggle-row">
+      <div class="toggle-info">
+        <span class="toggle-title">🌱 细胞自主繁殖 (Reproduction / Mitosis)</span>
+        <span class="toggle-desc">处于适宜密度时发生有丝分裂产生后代 (B)</span>
+      </div>
+      <label class="switch switch-green">
+        <input type="checkbox" id="toggleReproduction">
+        <span class="slider-toggle"></span>
+      </label>
+    </div>
+    <div class="control-toggle-row">
+      <div class="toggle-info">
+        <span class="toggle-title">🍂 细胞程序性凋亡 (Apoptosis / Decay)</span>
+        <span class="toggle-desc">过度拥挤窒息或孤立停滞的微粒自然代谢消亡 (D)</span>
+      </div>
+      <label class="switch switch-orange">
+        <input type="checkbox" id="toggleApoptosis">
+        <span class="slider-toggle"></span>
+      </label>
+    </div>
+    <div class="control-group" style="margin-top: 8px;">
+      <div class="control-label">
+        <span>生命演化速率 (Cycle Rate)</span>
+        <span class="control-val" id="valLifeCycleRate">1.0x</span>
+      </div>
+      <input type="range" id="paramLifeCycleRate" min="0.2" max="3.0" step="0.1" value="1.0">
+    </div>
+    <div style="font-size: 10px; color: #888; font-family: monospace; display: flex; justify-content: space-between; padding: 4px 0 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); margin-bottom: 6px;">
+      <span>累计新生: <b id="hudBirthCount" style="color: #00e676;">+0</b></span>
+      <span>累计凋亡: <b id="hudDeathCount" style="color: #ff9100;">-0</b></span>
+      <span>实时存活: <b id="hudLiveCount" style="color: #00e5ff;">2400</b></span>
+    </div>
+
     <div class="section-title">⚙️ 物理与动态环境参数</div>
     <div class="control-group">
       <div class="control-label">
@@ -1120,6 +1277,25 @@
       <input type="range" id="paramTouchRepel" min="0.2" max="4.0" step="0.1" value="1.8">
     </div>
 
+    <!-- 移动端陀螺仪重力微扰 -->
+    <div class="control-toggle-row" style="margin-top: 6px;">
+      <div class="toggle-info">
+        <span class="toggle-title">📱 移动端陀螺仪重力微扰 (Gyroscope Tilt)</span>
+        <span class="toggle-desc">倾斜手机像培养皿般滑动粒子，晃动产生流体微扰波 (G)</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggleGyro">
+        <span class="slider-toggle"></span>
+      </label>
+    </div>
+    <div class="control-group" style="margin-top: 4px;">
+      <div class="control-label">
+        <span>陀螺仪重力感应强度 (Tilt Force)</span>
+        <span class="control-val" id="valGyroStrength">1.0x</span>
+      </div>
+      <input type="range" id="paramGyroStrength" min="0.2" max="3.0" step="0.1" value="1.0">
+    </div>
+
     <!-- 空间音乐与粒子声化控制 -->
     <div class="section-title">
       <span>🎵 空间音乐与粒子生乐</span>
@@ -1201,12 +1377,18 @@
     <div>FPS: <span class="stats-highlight" id="statFps">60</span> | 活跃微粒: <span class="stats-highlight" id="statParticles">2400</span> | 颜色数: <span class="stats-highlight" id="statColors">6</span></div>
     <div>单细胞游动体: <span class="stats-highlight" id="statClusters">3</span> 处 | 演化步数: <span class="stats-highlight" id="statSteps">0</span></div>
     <div>状态: <span class="stats-highlight" id="statMode">视频原版游动单细胞生物 (Active Swimming Protozoa)</span></div>
+    <div id="statLifeRow" style="display: none;">
+      生态演化: <span class="stats-highlight" id="statLifeText">守恒</span> | 新生: <span class="stats-highlight" id="statBirthDisplay" style="color: #00e676;">+0</span> | 凋亡: <span class="stats-highlight" id="statDeathDisplay" style="color: #ff9100;">-0</span>
+    </div>
+    <div id="statGyroRow" style="display: none;">
+      陀螺仪重力: <span class="stats-highlight" id="statGyroVals">X: +0.00 | Y: +0.00</span>
+    </div>
   </div>
 
   <!-- 底部右侧提示 -->
   <div class="tip-hud">
-    <span class="tool-label-full">鼠标左键拖拽吸引微粒 | 右键排斥微粒 | 双击注入单细胞 | 空格暂停 | M 音乐 | H 面板</span>
-    <span class="tool-label-short">👆 单指拖动吸引 | 双指排斥 | 双击注入</span>
+    <span class="tool-label-full">左键吸引 | 右键排斥 | 双击注入 | G 陀螺仪 | B 繁殖 | D 凋亡 | 空格暂停 | M 音乐 | H 面板</span>
+    <span class="tool-label-short">👆 拖动吸引 | 双指排斥 | 双击注入 | 📱 倾斜感应</span>
   </div>
 
   <script>
@@ -1249,6 +1431,27 @@
     let initialCellCount = isMobile ? 2 : 3; // 初始生成的单细胞游动体数量
     let touchAttractStrength = 1.2; // 触摸吸引力乘数
     let touchRepelStrength = 1.8;   // 触摸排斥力乘数
+
+    // --- 生命演化动力学 (繁殖与凋亡) ---
+    let reproductionEnabled = false; // 细胞自主繁殖与分裂开关
+    let apoptosisEnabled = false;    // 细胞程序性凋亡与代谢开关
+    let lifeCycleRate = 1.0;         // 演化速率倍数
+    let birthCount = 0;              // 累计新生数量
+    let deathCount = 0;              // 累计凋亡数量
+
+    // --- 移动端陀螺仪重力微扰 ---
+    let gyroEnabled = false;         // 陀螺仪微扰开关
+    let gyroStrength = 1.0;          // 陀螺仪重力强度乘数
+    let gyroState = {
+      hasData: false,
+      targetX: 0,
+      targetY: 0,
+      smoothX: 0,
+      smoothY: 0,
+      shakeWave: 0,
+      lastBeta: 0,
+      lastGamma: 0
+    };
 
     // 交互力矩阵 matrix[i][j] (动态尺寸 NUM_TYPES × NUM_TYPES)
     let matrix = Array(NUM_TYPES).fill(0).map(() => Array(NUM_TYPES).fill(0));
@@ -2139,6 +2342,9 @@
           });
         }
       }
+      birthCount = 0;
+      deathCount = 0;
+      updateLifeCycleStatsUI();
       document.getElementById("statParticles").textContent = particles.length;
       document.getElementById("statColors").textContent = NUM_TYPES;
     }
@@ -2168,6 +2374,17 @@
       const touchAttractR = Math.min(135, Math.min(width, height) * 0.36);
       const touchAttractR2 = touchAttractR * touchAttractR;
       const isRepel = mouseState.button === 2;
+
+      // 陀螺仪惯性平滑与微扰衰减
+      if (gyroEnabled) {
+        gyroState.smoothX += (gyroState.targetX - gyroState.smoothX) * 0.14;
+        gyroState.smoothY += (gyroState.targetY - gyroState.smoothY) * 0.14;
+        if (gyroState.shakeWave > 0.01) {
+          gyroState.shakeWave *= 0.93;
+        } else {
+          gyroState.shakeWave = 0;
+        }
+      }
 
       for (let i = 0; i < particles.length; i++) {
         const p1 = particles[i];
@@ -2252,6 +2469,18 @@
           }
         }
 
+        // 移动端陀螺仪倾斜重力微扰与晃动冲击波
+        if (gyroEnabled) {
+          const gForce = gyroStrength * 1.65 * fMult;
+          fx += gyroState.smoothX * gForce;
+          fy += gyroState.smoothY * gForce;
+          if (gyroState.shakeWave > 0.01) {
+            const sw = gyroState.shakeWave * 3.2;
+            fx += (Math.random() - 0.5) * sw;
+            fy += (Math.random() - 0.5) * sw;
+          }
+        }
+
         // 活性微扰，抵消摩擦死锁
         if (jitter > 0) {
           fx += (Math.random() - 0.5) * jitter * 2.0;
@@ -2308,6 +2537,337 @@
       steps++;
       if (steps % 10 === 0) {
         document.getElementById("statSteps").textContent = steps;
+      }
+      if (gyroEnabled && steps % 4 === 0) {
+        updateGyroStatsUI();
+      }
+
+      // 细胞生态演化动力学 (自主繁殖与程序性凋亡)
+      if (reproductionEnabled || apoptosisEnabled) {
+        updateLifeCycle(dt);
+      }
+    }
+
+    // --- 细胞生态演化动力学：繁殖与程序性凋亡 ---
+    function updateLifeCycle(dt) {
+      if (!reproductionEnabled && !apoptosisEnabled) return;
+      if (steps % 5 !== 0) return; // 每 5 帧周期性调度，兼顾生命涌现律动与极致流畅度
+      if (particles.length === 0) return;
+
+      const rate = lifeCycleRate;
+      const rCheck = rMax * 0.72;
+      const rCheck2 = rCheck * rCheck;
+      const maxPopCap = Math.max(3000, Math.floor(particleCount * 1.5));
+      const minPopFloor = 320;
+
+      // 1. 细胞自主繁殖 (Reproduction / Mitosis)
+      if (reproductionEnabled && particles.length < maxPopCap) {
+        const sampleCount = Math.min(65, Math.max(12, Math.floor(particles.length * 0.04 * rate)));
+        const newOffspring = [];
+
+        for (let s = 0; s < sampleCount; s++) {
+          const idx = Math.floor(Math.random() * particles.length);
+          const p = particles[idx];
+          if (!p) continue;
+
+          let col = Math.floor(p.x / cellSize);
+          let row = Math.floor(p.y / cellSize);
+          if (col < 0) col = 0; else if (col >= numCols) col = numCols - 1;
+          if (row < 0) row = 0; else if (row >= numRows) row = numRows - 1;
+
+          let neighborCount = 0;
+          for (let ox = -1; ox <= 1; ox++) {
+            const sc = (col + ox + numCols) % numCols;
+            for (let oy = -1; oy <= 1; oy++) {
+              const sr = (row + oy + numRows) % numRows;
+              const cellParticles = gridCells[sc + sr * numCols];
+              const cLen = cellParticles.length;
+              for (let k = 0; k < cLen; k++) {
+                const j = cellParticles[k];
+                if (j === idx) continue;
+                const p2 = particles[j];
+                let dx = p2.x - p.x;
+                let dy = p2.y - p.y;
+                if (dx > width * 0.5) dx -= width;
+                else if (dx < -width * 0.5) dx += width;
+                if (dy > height * 0.5) dy -= height;
+                else if (dy < -height * 0.5) dy += height;
+                if (dx * dx + dy * dy < rCheck2) {
+                  neighborCount++;
+                  if (neighborCount > 12) break;
+                }
+              }
+              if (neighborCount > 12) break;
+            }
+            if (neighborCount > 12) break;
+          }
+
+          // 黄金分裂密度区：群落内部/边缘健康度（3 ~ 9 个邻居微粒，未过度挤压且非孤立）
+          if (neighborCount >= 3 && neighborCount <= 9) {
+            const capFactor = Math.max(0.1, 1.0 - particles.length / maxPopCap);
+            const birthProb = 0.085 * rate * capFactor;
+            if (Math.random() < birthProb) {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = 5 + Math.random() * 8;
+              const childX = (p.x + Math.cos(angle) * dist + width) % width;
+              const childY = (p.y + Math.sin(angle) * dist + height) % height;
+
+              let childType = p.type;
+              if (Math.random() < 0.05 && NUM_TYPES > 1) {
+                childType = (p.type + 1 + Math.floor(Math.random() * (NUM_TYPES - 1))) % NUM_TYPES;
+              }
+
+              const splitForce = 0.75;
+              p.vx += Math.cos(angle) * splitForce;
+              p.vy += Math.sin(angle) * splitForce;
+
+              newOffspring.push({
+                x: childX,
+                y: childY,
+                vx: -Math.cos(angle) * splitForce,
+                vy: -Math.sin(angle) * splitForce,
+                type: childType
+              });
+
+              birthCount++;
+              if (typeof audioEngine !== "undefined" && audioEngine.isEnabled && Math.random() < 0.22) {
+                audioEngine.playParticleTone(childType, 1.5, childX, childY);
+              }
+
+              if (particles.length + newOffspring.length >= maxPopCap) break;
+            }
+          }
+        }
+
+        for (let i = 0; i < newOffspring.length; i++) {
+          particles.push(newOffspring[i]);
+        }
+      }
+
+      // 2. 细胞程序性凋亡 (Apoptosis / Programmed Cell Death)
+      if (apoptosisEnabled && particles.length > minPopFloor) {
+        const sampleCount = Math.min(65, Math.max(12, Math.floor(particles.length * 0.04 * rate)));
+        const deadIndices = new Set();
+
+        for (let s = 0; s < sampleCount; s++) {
+          const idx = Math.floor(Math.random() * particles.length);
+          if (deadIndices.has(idx)) continue;
+          const p = particles[idx];
+          if (!p) continue;
+
+          let col = Math.floor(p.x / cellSize);
+          let row = Math.floor(p.y / cellSize);
+          if (col < 0) col = 0; else if (col >= numCols) col = numCols - 1;
+          if (row < 0) row = 0; else if (row >= numRows) row = numRows - 1;
+
+          let neighborCount = 0;
+          for (let ox = -1; ox <= 1; ox++) {
+            const sc = (col + ox + numCols) % numCols;
+            for (let oy = -1; oy <= 1; oy++) {
+              const sr = (row + oy + numRows) % numRows;
+              const cellParticles = gridCells[sc + sr * numCols];
+              const cLen = cellParticles.length;
+              for (let k = 0; k < cLen; k++) {
+                const j = cellParticles[k];
+                if (j === idx) continue;
+                const p2 = particles[j];
+                let dx = p2.x - p.x;
+                let dy = p2.y - p.y;
+                if (dx > width * 0.5) dx -= width;
+                else if (dx < -width * 0.5) dx += width;
+                if (dy > height * 0.5) dy -= height;
+                else if (dy < -height * 0.5) dy += height;
+                if (dx * dx + dy * dy < rCheck2) {
+                  neighborCount++;
+                  if (neighborCount > 18) break;
+                }
+              }
+              if (neighborCount > 18) break;
+            }
+            if (neighborCount > 18) break;
+          }
+
+          let dieProb = 0;
+          // 条件一：过度挤压窒息 (neighborCount >= 15)
+          if (neighborCount >= 15) dieProb = 0.12 * rate;
+          // 条件二：孤立枯竭 (neighborCount === 0)
+          else if (neighborCount === 0) dieProb = 0.045 * rate;
+          // 条件三：超出基准粒子数时的自稳代谢
+          else if (particles.length > particleCount) dieProb = 0.025 * rate;
+
+          if (dieProb > 0 && Math.random() < dieProb) {
+            deadIndices.add(idx);
+            deathCount++;
+            if (particles.length - deadIndices.size <= minPopFloor) break;
+          }
+        }
+
+        if (deadIndices.size > 0) {
+          particles = particles.filter((_, idx) => !deadIndices.has(idx));
+        }
+      }
+
+      document.getElementById("statParticles").textContent = particles.length;
+      updateLifeCycleStatsUI();
+    }
+
+    function updateLifeCycleStatsUI() {
+      const liveCountEl = document.getElementById("hudLiveCount");
+      if (liveCountEl) liveCountEl.textContent = particles.length;
+      const birthEl = document.getElementById("hudBirthCount");
+      if (birthEl) birthEl.textContent = "+" + birthCount;
+      const deathEl = document.getElementById("hudDeathCount");
+      if (deathEl) deathEl.textContent = "-" + deathCount;
+
+      const statLifeRow = document.getElementById("statLifeRow");
+      if (statLifeRow) {
+        if (reproductionEnabled || apoptosisEnabled) {
+          statLifeRow.style.display = "block";
+          const repText = reproductionEnabled ? "繁殖:开" : "繁殖:关";
+          const apoText = apoptosisEnabled ? "凋亡:开" : "凋亡:关";
+          document.getElementById("statLifeText").textContent = repText + " | " + apoText;
+          document.getElementById("statBirthDisplay").textContent = "+" + birthCount;
+          document.getElementById("statDeathDisplay").textContent = "-" + deathCount;
+        } else {
+          statLifeRow.style.display = "none";
+        }
+      }
+
+      const badge = document.getElementById("lifeCycleStatusBadge");
+      if (badge) {
+        if (reproductionEnabled && apoptosisEnabled) {
+          badge.textContent = "● 动态平衡生态 (ON)";
+          badge.style.color = "#00e5ff";
+        } else if (reproductionEnabled) {
+          badge.textContent = "● 仅繁殖扩散 (ON)";
+          badge.style.color = "#00e676";
+        } else if (apoptosisEnabled) {
+          badge.textContent = "● 仅凋亡代谢 (ON)";
+          badge.style.color = "#ff9100";
+        } else {
+          badge.textContent = "● 经典守恒 (OFF)";
+          badge.style.color = "#888";
+        }
+      }
+    }
+
+    // --- 移动端陀螺仪重力微扰系统 ---
+    function handleDeviceOrientation(e) {
+      if (!gyroEnabled) return;
+      const beta = e.beta;   // -180 ~ 180 (前后倾斜)
+      const gamma = e.gamma; // -90 ~ 90 (左右倾斜)
+      if (beta === null && gamma === null) return;
+
+      gyroState.hasData = true;
+
+      // 晃动剧烈度检测与液体震荡微扰
+      const dG = Math.abs(gamma - gyroState.lastGamma);
+      const dB = Math.abs(beta - gyroState.lastBeta);
+      gyroState.lastGamma = gamma;
+      gyroState.lastBeta = beta;
+
+      if (dG + dB > 16) {
+        gyroState.shakeWave = Math.min(2.5, gyroState.shakeWave + (dG + dB) * 0.04);
+        if (typeof audioEngine !== "undefined" && audioEngine.isEnabled && Math.random() < 0.25) {
+          audioEngine.playParticleTone(Math.floor(Math.random() * NUM_TYPES), 2.2, width * 0.5, height * 0.5);
+        }
+      }
+
+      // 手机在手持竖屏下的自然视角基准约为 26°
+      let normX = gamma / 36;
+      let normY = (beta - 26) / 36;
+      normX = Math.max(-1.5, Math.min(1.5, normX));
+      normY = Math.max(-1.5, Math.min(1.5, normY));
+
+      // 屏幕旋转角补偿 (横竖屏自适应物理重力指向)
+      const orientAngle = (screen.orientation && screen.orientation.angle !== undefined)
+        ? screen.orientation.angle
+        : (window.orientation || 0);
+
+      if (orientAngle === 90) {
+        gyroState.targetX = normY;
+        gyroState.targetY = -normX;
+      } else if (orientAngle === -90 || orientAngle === 270) {
+        gyroState.targetX = -normY;
+        gyroState.targetY = normX;
+      } else if (orientAngle === 180) {
+        gyroState.targetX = -normX;
+        gyroState.targetY = -normY;
+      } else {
+        gyroState.targetX = normX;
+        gyroState.targetY = normY;
+      }
+
+      updateGyroStatsUI();
+    }
+
+    function updateGyroStatsUI() {
+      const statGyroRow = document.getElementById("statGyroRow");
+      const statGyroVals = document.getElementById("statGyroVals");
+      if (statGyroRow && statGyroVals) {
+        if (gyroEnabled) {
+          statGyroRow.style.display = "block";
+          const signX = gyroState.smoothX >= 0 ? "+" : "";
+          const signY = gyroState.smoothY >= 0 ? "+" : "";
+          statGyroVals.textContent = `X: ${signX}${gyroState.smoothX.toFixed(2)} | Y: ${signY}${gyroState.smoothY.toFixed(2)}`;
+        } else {
+          statGyroRow.style.display = "none";
+        }
+      }
+    }
+
+    async function setGyroState(enabled) {
+      if (enabled) {
+        if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+          try {
+            const perm = await DeviceOrientationEvent.requestPermission();
+            if (perm !== "granted") {
+              alert("需要设备方向与动作权限以启用陀螺仪重力微扰。");
+              syncGyroUI(false);
+              return;
+            }
+          } catch (err) {
+            console.warn("DeviceOrientation permission error:", err);
+          }
+        }
+        gyroEnabled = true;
+        window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+        syncGyroUI(true);
+      } else {
+        gyroEnabled = false;
+        gyroState.targetX = 0;
+        gyroState.targetY = 0;
+        gyroState.smoothX = 0;
+        gyroState.smoothY = 0;
+        gyroState.shakeWave = 0;
+        window.removeEventListener("deviceorientation", handleDeviceOrientation, true);
+        syncGyroUI(false);
+      }
+      updateGyroStatsUI();
+    }
+
+    function syncGyroUI(enabled) {
+      gyroEnabled = enabled;
+      const chk = document.getElementById("toggleGyro");
+      if (chk) chk.checked = enabled;
+
+      const topBtn = document.getElementById("gyroToggleBtn");
+      const topIcon = document.getElementById("topGyroIcon");
+      const topText = document.getElementById("topGyroText");
+      const topTextShort = document.getElementById("topGyroTextShort");
+
+      if (topBtn) {
+        if (enabled) {
+          topBtn.classList.add("gyro-active");
+          if (topIcon) topIcon.textContent = "🧭";
+          if (topText) topText.textContent = "陀螺仪: 开 (G)";
+          if (topTextShort) topTextShort.textContent = "陀螺: 开";
+        } else {
+          topBtn.classList.remove("gyro-active");
+          if (topIcon) topIcon.textContent = "📱";
+          if (topText) topText.textContent = "陀螺仪: 关 (G)";
+          if (topTextShort) topTextShort.textContent = "陀螺: 关";
+        }
       }
     }
 
@@ -2676,6 +3236,61 @@
       });
     }
 
+    // --- 生命生态动力学 UI 绑定 (繁殖与凋亡) ---
+    const toggleReproduction = document.getElementById("toggleReproduction");
+    if (toggleReproduction) {
+      toggleReproduction.checked = reproductionEnabled;
+      toggleReproduction.addEventListener("change", e => {
+        reproductionEnabled = e.target.checked;
+        updateLifeCycleStatsUI();
+      });
+    }
+
+    const toggleApoptosis = document.getElementById("toggleApoptosis");
+    if (toggleApoptosis) {
+      toggleApoptosis.checked = apoptosisEnabled;
+      toggleApoptosis.addEventListener("change", e => {
+        apoptosisEnabled = e.target.checked;
+        updateLifeCycleStatsUI();
+      });
+    }
+
+    const paramLifeCycleRate = document.getElementById("paramLifeCycleRate");
+    const valLifeCycleRate = document.getElementById("valLifeCycleRate");
+    if (paramLifeCycleRate) {
+      paramLifeCycleRate.value = lifeCycleRate;
+      paramLifeCycleRate.addEventListener("input", e => {
+        lifeCycleRate = parseFloat(e.target.value);
+        if (valLifeCycleRate) valLifeCycleRate.textContent = lifeCycleRate.toFixed(1) + "x";
+      });
+    }
+
+    // --- 移动端陀螺仪 UI 绑定 ---
+    const toggleGyro = document.getElementById("toggleGyro");
+    if (toggleGyro) {
+      toggleGyro.checked = gyroEnabled;
+      toggleGyro.addEventListener("change", e => {
+        setGyroState(e.target.checked);
+      });
+    }
+
+    const gyroToggleBtn = document.getElementById("gyroToggleBtn");
+    if (gyroToggleBtn) {
+      gyroToggleBtn.addEventListener("click", () => {
+        setGyroState(!gyroEnabled);
+      });
+    }
+
+    const paramGyroStrength = document.getElementById("paramGyroStrength");
+    const valGyroStrength = document.getElementById("valGyroStrength");
+    if (paramGyroStrength) {
+      paramGyroStrength.value = gyroStrength;
+      paramGyroStrength.addEventListener("input", e => {
+        gyroStrength = parseFloat(e.target.value);
+        if (valGyroStrength) valGyroStrength.textContent = gyroStrength.toFixed(1) + "x";
+      });
+    }
+
     const playPauseBtn = document.getElementById("playPauseBtn");
     playPauseBtn.addEventListener("click", () => {
       isPaused = !isPaused;
@@ -2804,6 +3419,14 @@
       } else if (e.key === "x" || e.key === "X") {
         if (matrixModal && matrixModal.classList.contains("active")) closeMatrixModal();
         else openMatrixModal();
+      } else if (e.key === "g" || e.key === "G") {
+        setGyroState(!gyroEnabled);
+      } else if (e.key === "b" || e.key === "B") {
+        const t = document.getElementById("toggleReproduction");
+        if (t) { t.checked = !t.checked; t.dispatchEvent(new Event("change")); }
+      } else if (e.key === "d" || e.key === "D") {
+        const t = document.getElementById("toggleApoptosis");
+        if (t) { t.checked = !t.checked; t.dispatchEvent(new Event("change")); }
       } else if (e.key === "Escape") {
         if (matrixModal && matrixModal.classList.contains("active")) {
           closeMatrixModal();
@@ -2822,6 +3445,14 @@
     canvas.addEventListener("mousemove", e => {
       mouseState.x = e.clientX;
       mouseState.y = e.clientY;
+      if (gyroEnabled && !gyroState.hasData) {
+        // 桌面端鼠标模拟重力倾斜：鼠标偏离屏幕中心产生倾斜力
+        const normX = (e.clientX / width - 0.5) * 1.6;
+        const normY = (e.clientY / height - 0.5) * 1.6;
+        gyroState.targetX = normX;
+        gyroState.targetY = normY;
+        updateGyroStatsUI();
+      }
     });
     window.addEventListener("mouseup", () => {
       mouseState.down = false;
